@@ -25,4 +25,10 @@ public interface ITask extends Callable<Boolean>, IGuardListener {
     void pause();
 
     void stop();
+
+    State getState();
+
+    enum State {
+        NONE, START, LOADING, PAUSE, ERROR, COMPLETE, RELEASE
+    }
 }

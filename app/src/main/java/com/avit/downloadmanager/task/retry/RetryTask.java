@@ -143,6 +143,11 @@ public final class RetryTask implements ITask {
     }
 
     @Override
+    public State getState() {
+        return task.getState();
+    }
+
+    @Override
     public void pause() {
         task.pause();
     }

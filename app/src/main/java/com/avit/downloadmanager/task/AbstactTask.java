@@ -26,6 +26,8 @@ public abstract class AbstactTask implements ITask {
 
     protected SpaceGuard spaceGuard;
 
+    protected State state;
+
     public AbstactTask(DownloadItem downloadItem) {
         TAG = getClass().getSimpleName();
 
@@ -85,19 +87,19 @@ public abstract class AbstactTask implements ITask {
     @Override
     public final Boolean call() throws Exception {
 
-        if (!onStart()) {
+        if (isValidState() && !onStart()) {
             return Boolean.FALSE;
         }
 
-        if (!onDownload()) {
+        if (isValidState() && !onDownload()) {
             return Boolean.FALSE;
         }
 
-        if (!onVerify()) {
+        if (isValidState() && !onVerify()) {
             return Boolean.FALSE;
         }
 
-        if (taskListener != null) {
+        if (isValidState() && taskListener != null) {
             taskListener.onCompleted(downloadItem);
         }
 
@@ -140,19 +142,46 @@ public abstract class AbstactTask implements ITask {
     }
 
     @Override
-    public void start() {
+    public State getState() {
+        return state;
+    }
 
+    @Override
+    public void start() {
+        State state = getState();
+        if (state == State.PAUSE) {
+            this.state = State.START;
+            return;
+        } else {
+            Log.w(TAG, "start: state = " + state.name());
+        }
     }
 
     @Override
     public void pause() {
-
+        State state = getState();
+        if (state == State.START || state == State.LOADING) {
+            this.state = State.PAUSE;
+            return;
+        } else {
+            Log.w(TAG, "pause: state = " + state.name());
+        }
     }
 
     @Override
     public void stop() {
-
+        release();
     }
 
+    @Override
+    public void release() {
+        this.state = State.RELEASE;
+    }
 
+    private boolean isValidState(){
+        if (state == State.RELEASE)
+            throw new IllegalStateException(""+this + " already release");
+
+        return true;
+    }
 }

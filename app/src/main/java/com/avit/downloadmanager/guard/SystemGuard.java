@@ -2,19 +2,19 @@ package com.avit.downloadmanager.guard;
 
 import android.content.Context;
 
-public class SystemGuard implements IGuard {
+public abstract class SystemGuard implements IGuard {
     protected Context context;
 
-    protected Guard guard;
+    protected GuardHelper guardHelper;
 
     public SystemGuard(Context context) {
         this.context = context;
-        this.guard = Guard.getInstance();
+        this.guardHelper = GuardHelper.getInstance();
     }
 
     @Override
     public void notifyEvent(Type type, GuardEvent event) {
-        guard.notifyEvent(type, event);
+        guardHelper.notifyEvent(type, event);
     }
 
     @Override

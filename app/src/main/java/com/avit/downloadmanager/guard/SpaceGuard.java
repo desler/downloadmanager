@@ -100,6 +100,11 @@ public final class SpaceGuard extends SystemGuard {
         return super.guard();
     }
 
+    @Override
+    public void registerGuardListener(String path, IGuardListener guardListener) {
+        guardHelper.registerSpaceGuardListener(path, guardListener);
+    }
+
     static String path2MountDir(String path) {
         return path;
     }

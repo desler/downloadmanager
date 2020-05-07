@@ -9,5 +9,7 @@ public interface IGuard{
 
     IGuard guard();
 
+    void registerGuardListener(String key , IGuardListener guardListener);
+
     enum Type {NETWORK, SPACE, SYSTEM, UNKNOWN}
 }

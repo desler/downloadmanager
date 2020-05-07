@@ -8,21 +8,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class Guard implements IGuard {
+final class GuardHelper {
 
     public final static String TAG = "Guard";
 
-    private final static Guard sInstance = new Guard();
+    private final static GuardHelper sInstance = new GuardHelper();
 
     private List<IGuardListener> networkListeners;
     private Map<String, List<IGuardListener>> dirIGuardListenerMap;
 
 
-    public static Guard getInstance() {
+    public static GuardHelper getInstance() {
         return sInstance;
     }
 
-    private Guard() {
+    private GuardHelper() {
         networkListeners = new ArrayList<>();
         dirIGuardListenerMap = new HashMap<>();
     }
@@ -51,14 +51,13 @@ public final class Guard implements IGuard {
         }
     }
 
-    @Override
-    public void notifyEvent(Type type, GuardEvent event) {
+    public void notifyEvent(IGuard.Type type, GuardEvent event) {
 
         event.type = type;
 
         GuardEvent.dump(event);
 
-        if (type == Type.NETWORK) {
+        if (type == IGuard.Type.NETWORK) {
             /**
              * 网络异常，给所有 任务都需要分发
              */
@@ -66,7 +65,7 @@ public final class Guard implements IGuard {
                 l.onGuardEvent(event);
             }
 
-        } else if (type == Type.SPACE) {
+        } else if (type == IGuard.Type.SPACE) {
 
             /**
              * 空间不够等异常，只针对需要相应目录的空间 才需要
@@ -80,15 +79,5 @@ public final class Guard implements IGuard {
         } else {
             Log.w(TAG, "notifyEvent: DO NOT SUPPORT, type = " + type.name());
         }
-    }
-
-    @Override
-    public void watchDog() {
-
-    }
-
-    @Override
-    public IGuard guard() {
-        return null;
     }
 }
