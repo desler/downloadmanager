@@ -60,7 +60,7 @@ public final class SpaceGuard extends SystemGuard {
 
         if (tfsize < RED_SIZE){
             Log.e(TAG, "occupySize: FAILED, space not enough! > " + tfsize);
-            event.reason = SpaceGuardEvent.EVENT_WARNING;
+            event.reason = SpaceGuardEvent.EVENT_ERROR;
             notifyEvent(Type.SPACE, event);
             return false;
         }
@@ -69,7 +69,7 @@ public final class SpaceGuard extends SystemGuard {
 
         if (tfsize < WARNING_SIZE){
             Log.w(TAG, "occupySize: WARNING, space is will exhaust! > " + tfsize);
-            event.reason = SpaceGuardEvent.EVENT_ERROR;
+            event.reason = SpaceGuardEvent.EVENT_WARNING;
             notifyEvent(Type.SPACE, event);
         }
 
