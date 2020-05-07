@@ -1,0 +1,52 @@
+package com.avit.downloadmanager.data;
+
+import android.text.TextUtils;
+
+public class DownloadItem {
+    private String version;
+
+    private String dlPath;
+    private String savePath;
+
+    private String filename;
+    private Object object;
+
+    private String key;
+
+    private DownloadItem(){
+    }
+
+    public DownloadItem withDlPath(String dlPath){
+        this.dlPath = dlPath;
+        return this;
+    }
+
+    public DownloadItem withSavePath(String savePath){
+        this.savePath = savePath;
+        return this;
+    }
+
+    public DownloadItem withTag(Object object){
+        this.object = object;
+        return this;
+    }
+
+    public String getFilename() {
+        return filename;
+    }
+
+    public String getSavePath() {
+        return savePath;
+    }
+
+    public String getKey() {
+        if (TextUtils.isEmpty(key)){
+//            key = md5(version#dlPath)
+        }
+        return key;
+    }
+
+    public static DownloadItem create(){
+        return new DownloadItem();
+    }
+}
