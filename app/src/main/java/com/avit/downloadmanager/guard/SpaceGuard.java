@@ -1,6 +1,7 @@
 package com.avit.downloadmanager.guard;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.HashMap;
@@ -12,11 +13,19 @@ public final class SpaceGuard extends SystemGuard {
 
     private static CacheGuard cacheGuard = new CacheGuard();
 
+    public final static SpaceGuard ERROR = new SpaceGuard(null, null);
+
     public static SpaceGuard createSpaceGuard(Context context, String path) {
         String dir = path2MountDir(path);
+
+        if (TextUtils.isEmpty(dir)) {
+            Log.e(TAG, "createSpaceGuard: dir is null");
+            return ERROR;
+        }
+
         SpaceGuard spaceGuard = cacheGuard.getSpaceGuard(dir);
         if (spaceGuard == null) {
-            spaceGuard = new SpaceGuard(context).withDir(dir);
+            spaceGuard = new SpaceGuard(context, dir);
             cacheGuard.putSpaceGuard(dir, spaceGuard);
         }
         return spaceGuard;
@@ -36,21 +45,17 @@ public final class SpaceGuard extends SystemGuard {
 
     private long freeSize;
 
-    private SpaceGuard(Context context) {
+    private SpaceGuard(Context context, String dir) {
         super(context);
+        this.guardDir = dir;
     }
 
     @Override
-    public void watchDog() {
+    public void guard() {
 
     }
 
-    public SpaceGuard withDir(String path) {
-        guardDir = path2MountDir(path);
-        return this;
-    }
-
-    public boolean occupySize(long size){
+    public boolean occupySize(long size) {
 
         long tfsize = freeSize - totalSize;
 
@@ -58,7 +63,7 @@ public final class SpaceGuard extends SystemGuard {
         event.type = Type.SPACE;
         event.objExt = guardDir;
 
-        if (tfsize < RED_SIZE){
+        if (tfsize < RED_SIZE) {
             Log.e(TAG, "occupySize: FAILED, space not enough! > " + tfsize);
             event.reason = SpaceGuardEvent.EVENT_ERROR;
             notifyEvent(Type.SPACE, event);
@@ -67,7 +72,7 @@ public final class SpaceGuard extends SystemGuard {
 
         totalSize += size;
 
-        if (tfsize < WARNING_SIZE){
+        if (tfsize < WARNING_SIZE) {
             Log.w(TAG, "occupySize: WARNING, space is will exhaust! > " + tfsize);
             event.reason = SpaceGuardEvent.EVENT_WARNING;
             notifyEvent(Type.SPACE, event);
@@ -96,13 +101,13 @@ public final class SpaceGuard extends SystemGuard {
     }
 
     @Override
-    public IGuard guard() {
-        return super.guard();
+    public void addGuardListener(IGuardListener guardListener) {
+        guardHelper.addSpaceGuardListener(guardDir, guardListener);
     }
 
     @Override
-    public void registerGuardListener(String path, IGuardListener guardListener) {
-        guardHelper.registerSpaceGuardListener(path, guardListener);
+    public void removeGuardListener(IGuardListener guardListener) {
+        guardHelper.removeSpaceGuardListener(guardDir, guardListener);
     }
 
     static String path2MountDir(String path) {

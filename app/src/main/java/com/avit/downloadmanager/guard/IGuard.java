@@ -1,15 +1,17 @@
 package com.avit.downloadmanager.guard;
 
-import java.util.concurrent.Callable;
-
-public interface IGuard{
+public interface IGuard {
     void notifyEvent(Type type, GuardEvent event);
 
-    void watchDog();
+    void addGuardListener(IGuardListener guardListener);
 
-    IGuard guard();
+    void removeGuardListener(IGuardListener guardListener);
 
-    void registerGuardListener(String key , IGuardListener guardListener);
+    void guard();
+
+    IGuard enable();
+
+    IGuard disable();
 
     enum Type {NETWORK, SPACE, SYSTEM, UNKNOWN}
 }

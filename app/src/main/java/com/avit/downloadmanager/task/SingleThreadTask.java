@@ -33,11 +33,11 @@ public class SingleThreadTask extends AbstactTask {
 
     @Override
     public void start() {
-
+        super.start();
     }
 
     @Override
     public void release() {
-
+        super.release();
     }
 }

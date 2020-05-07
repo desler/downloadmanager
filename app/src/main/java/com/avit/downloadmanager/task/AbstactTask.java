@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.guard.GuardEvent;
+import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.task.retry.RetryConfig;
 import com.avit.downloadmanager.verify.IVerify;
@@ -25,6 +26,7 @@ public abstract class AbstactTask implements ITask {
     protected boolean supportBreakpoint;
 
     protected SpaceGuard spaceGuard;
+    protected NetworkGuard networkGuard;
 
     protected State state;
 
@@ -59,6 +61,15 @@ public abstract class AbstactTask implements ITask {
 
     public AbstactTask withSpaceGuard(SpaceGuard spaceGuard) {
         this.spaceGuard = spaceGuard;
+        this.spaceGuard.addGuardListener(this);
+        this.spaceGuard.guard();
+        return this;
+    }
+
+    public AbstactTask withNetworkGuard(NetworkGuard networkGuard) {
+        this.networkGuard = networkGuard;
+        this.networkGuard.addGuardListener(this);
+        this.networkGuard.guard();
         return this;
     }
 
@@ -138,6 +149,7 @@ public abstract class AbstactTask implements ITask {
 
     @Override
     public boolean onGuardEvent(GuardEvent guardEvent) {
+        GuardEvent.dump(guardEvent);
         return false;
     }
 
@@ -148,6 +160,9 @@ public abstract class AbstactTask implements ITask {
 
     @Override
     public void start() {
+        if(!isValidState()){
+            return;
+        }
         State state = getState();
         if (state == State.PAUSE) {
             this.state = State.START;
@@ -159,6 +174,9 @@ public abstract class AbstactTask implements ITask {
 
     @Override
     public void pause() {
+        if(!isValidState()){
+            return;
+        }
         State state = getState();
         if (state == State.START || state == State.LOADING) {
             this.state = State.PAUSE;
@@ -170,17 +188,26 @@ public abstract class AbstactTask implements ITask {
 
     @Override
     public void stop() {
+        if(!isValidState()){
+            return;
+        }
         release();
     }
 
     @Override
     public void release() {
         this.state = State.RELEASE;
+        if (this.spaceGuard != null) {
+            this.spaceGuard.removeGuardListener(this);
+        }
+        if (this.networkGuard != null) {
+            this.networkGuard.removeGuardListener(this);
+        }
     }
 
-    private boolean isValidState(){
+    private boolean isValidState() {
         if (state == State.RELEASE)
-            throw new IllegalStateException(""+this + " already release");
+            throw new IllegalStateException("" + this + " already RELEASE");
 
         return true;
     }

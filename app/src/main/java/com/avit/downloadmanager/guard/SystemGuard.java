@@ -18,12 +18,12 @@ public abstract class SystemGuard implements IGuard {
     }
 
     @Override
-    public void watchDog() {
-
+    public IGuard enable() {
+        return null;
     }
 
     @Override
-    public IGuard guard() {
+    public IGuard disable() {
         return null;
     }
 }

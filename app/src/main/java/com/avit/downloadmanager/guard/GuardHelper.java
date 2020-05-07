@@ -27,16 +27,15 @@ final class GuardHelper {
         dirIGuardListenerMap = new HashMap<>();
     }
 
-    public void registerNetworkGuardListener(IGuardListener guardListener) {
+    public void addNetworkGuardListener(IGuardListener guardListener) {
         networkListeners.add(guardListener);
     }
 
-    public void registerSpaceGuardListener(String path, IGuardListener guardListener) {
-        String dir = SpaceGuard.path2MountDir(path);
-        if (TextUtils.isEmpty(dir)) {
-            Log.e(TAG, "addSpaceGuardListener: dir is null");
-            return;
-        }
+    public void removeNetworkGuardListener(IGuardListener guardListener){
+        networkListeners.remove(guardListener);
+    }
+
+    public void addSpaceGuardListener(String dir, IGuardListener guardListener) {
 
         Log.d(TAG, "addSpaceGuardListener: dir = " + dir + ", guardListener = " + guardListener);
 
@@ -50,6 +49,22 @@ final class GuardHelper {
             listeners.add(guardListener);
         }
     }
+
+    public void removeSpaceGuardListener(String dir, IGuardListener guardListener) {
+
+        Log.d(TAG, "removeSpaceGuardListener: dir = " + dir + ", guardListener = " + guardListener);
+
+        List<IGuardListener> listeners = dirIGuardListenerMap.get(dir);
+        if (listeners == null) {
+            listeners = new ArrayList<>();
+            dirIGuardListenerMap.put(dir, listeners);
+        }
+
+        if (listeners != null && !listeners.isEmpty()) {
+            listeners.remove(guardListener);
+        }
+    }
+
 
     public void notifyEvent(IGuard.Type type, GuardEvent event) {
 

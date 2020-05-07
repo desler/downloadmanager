@@ -23,7 +23,17 @@ public final class NetworkGuard extends SystemGuard{
     }
 
     @Override
-    public void registerGuardListener(String key, IGuardListener guardListener) {
-        guardHelper.registerNetworkGuardListener(guardListener);
+    public void addGuardListener(IGuardListener guardListener) {
+        guardHelper.addNetworkGuardListener(guardListener);
+    }
+
+    @Override
+    public void removeGuardListener(IGuardListener guardListener) {
+        guardHelper.removeNetworkGuardListener(guardListener);
+    }
+
+    @Override
+    public void guard() {
+
     }
 }
