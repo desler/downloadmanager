@@ -39,6 +39,10 @@ public class DownloadItem {
         return savePath;
     }
 
+    public String getDlPath() {
+        return dlPath;
+    }
+
     public String getKey() {
         if (TextUtils.isEmpty(key)){
 //            key = md5(version#dlPath)

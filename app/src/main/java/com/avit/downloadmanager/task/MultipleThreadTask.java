@@ -42,6 +42,8 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
 
     private boolean hasError;
 
+    private DownloadHelper downloadHelper;
+
     private ExecutorService executorService = Executors.newFixedThreadPool(MAX_THREADS + 1, new ThreadFactory() {
         @Override
         public Thread newThread(Runnable r) {
@@ -66,9 +68,9 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
     public MultipleThreadTask withNumThreads(int max) {
 
         int num = max;
-        if (max > MAX_THREADS){
+        if (max > MAX_THREADS) {
             num = MAX_THREADS;
-        } else if (max <= 0){
+        } else if (max <= 0) {
             num = 1;
         }
         this.maxThreads = num;
@@ -78,7 +80,15 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
 
     @Override
     protected boolean onStart() {
-        return false;
+        try {
+            downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath()).created();
+            downloadHelper.getResponseCode();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        return true;
     }
 
     private DLTempConfig createDLTempConfig(int index, long length) {
@@ -86,7 +96,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
         DLTempConfig dlTempConfig = new DLTempConfig();
         dlTempConfig.key = downloadItem.getKey();
 
-        dlTempConfig.start = index * unitSize;
+        dlTempConfig.start = index * unitSize + index * 1;
         dlTempConfig.end = dlTempConfig.start + length;
 
         dlTempConfig.filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename(), index);
@@ -96,12 +106,12 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
         return dlTempConfig;
     }
 
-    private SingleTask createSingleTask(DLTempConfig tempConfig){
+    private SingleTask createSingleTask(DLTempConfig tempConfig) {
         SingleTask singleTask = new SingleTask(downloadItem).withLoadListener(this);
         /**
          * 是否支持断点续写
          */
-        if (supportBreakpoint){
+        if (supportBreakpoint) {
             singleTask.supportBreakpoint();
         }
         return singleTask.withDLTempConfig(tempConfig);
@@ -161,7 +171,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
         /**
          * block here
          */
-        for (int i = 0; i < futures.length && !hasError; ++ i) {
+        for (int i = 0; i < futures.length && !hasError; ++i) {
             try {
                 futures[i].get();
             } catch (Throwable e) {
@@ -171,7 +181,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             }
         }
 
-        if (hasError){
+        if (hasError) {
             Log.e(TAG, "onDownload: error");
             return false;
         }
@@ -211,13 +221,13 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
      */
     private boolean mergeFiles(File... files) {
 
-        if (files == null || files.length == 0){
+        if (files == null || files.length == 0) {
             Log.w(TAG, "mergeFiles: nothing need to merge");
             return true;
         }
 
         String filePath = downloadItem.getSavePath() + "/" + downloadItem.getFilename();
-        if (files.length == 1){
+        if (files.length == 1) {
             files[0].renameTo(new File(filePath));
             Log.d(TAG, "mergeFiles: only one file, rename it, no need to merge");
             return true;
@@ -258,8 +268,8 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             /**
              * 删除多线程下载时，各线程 生成的 part.x 文件
              */
-            for (File f: files){
-                Log.d(TAG, "mergeFiles: delete part file " + f.getPath()  +" > "+ f.delete());
+            for (File f : files) {
+                Log.d(TAG, "mergeFiles: delete part file " + f.getPath() + " > " + f.delete());
             }
 
             Log.d(TAG, "mergeFiles: cost = " + (System.currentTimeMillis() - begin));
@@ -270,13 +280,13 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             Log.e(TAG, "mergeFiles: ", e);
             taskListener.onError(downloadItem, null);
         } finally {
-            if (fileInputStream != null){
+            if (fileInputStream != null) {
                 try {
                     fileInputStream.close();
                 } catch (IOException e) {
                 }
             }
-            if (fileOutputStream != null){
+            if (fileOutputStream != null) {
                 try {
                     fileOutputStream.close();
                 } catch (IOException e) {
@@ -317,12 +327,17 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
 
 class SingleTask implements Callable<DLTempConfig> {
 
+    private DownloadItem downloadItem;
+
     private DLTempConfig dlTempConfig;
     private boolean supportBreakpoint;
 
     private LoadListener loadListener;
 
+    private DownloadHelper downloadHelper;
+
     protected SingleTask(DownloadItem downloadItem) {
+        this.downloadItem = downloadItem;
     }
 
     SingleTask withDLTempConfig(DLTempConfig config) {
@@ -342,6 +357,8 @@ class SingleTask implements Callable<DLTempConfig> {
 
     @Override
     public DLTempConfig call() throws Exception {
+
+
         return dlTempConfig;
     }
 
