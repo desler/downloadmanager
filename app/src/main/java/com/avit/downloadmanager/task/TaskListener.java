@@ -8,11 +8,11 @@ public interface TaskListener {
 
     void onCompleted(DownloadItem item);
 
-    void onUpdateProgress(DownloadItem item, long percent);
+    void onUpdateProgress(DownloadItem item, int percent);
 
-    void onPause(DownloadItem item, long percent);
+    void onPause(DownloadItem item, int percent);
 
     void onError(DownloadItem item, Error error);
 
-    void onStop(DownloadItem item, int reason, String messsage);
+    void onStop(DownloadItem item, int reason, String message);
 }

@@ -1,11 +1,18 @@
 package com.avit.downloadmanager.task;
 
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import com.avit.downloadmanager.data.DownloadItem;
+import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.GuardEvent;
-import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
+import com.avit.downloadmanager.guard.SystemGuard;
 import com.avit.downloadmanager.task.retry.RetryConfig;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyCheck;
@@ -17,16 +24,21 @@ import java.util.List;
 
 public abstract class AbstactTask implements ITask {
 
-    protected String TAG = "AbstactTask";
+    protected final String TAG;
 
     protected DownloadItem downloadItem;
     protected TaskListener taskListener;
     protected RetryConfig retryConfig;
     protected List<VerifyConfig> verifyConfigs;
-    protected boolean supportBreakpoint;
 
+    protected List<SystemGuard> systemGuards;
+    /**
+     * 关于 磁盘 空间大小的 guard，需要单独拎出来，因为 需要实时监控 磁盘空间大小。
+     */
     protected SpaceGuard spaceGuard;
-    protected NetworkGuard networkGuard;
+
+    protected boolean supportBreakpoint;
+    protected boolean callbackOnMainThread;
 
     protected State state;
 
@@ -36,11 +48,26 @@ public abstract class AbstactTask implements ITask {
         this.retryConfig = RetryConfig.create();
         this.verifyConfigs = new ArrayList<>(1);
 
+        this.systemGuards = new ArrayList<>(2);
+
         this.downloadItem = downloadItem;
     }
 
     public AbstactTask withListener(TaskListener listener) {
-        taskListener = listener;
+
+        if (this.taskListener == null) {
+            /**
+             * 默认在当前线程的 looper中执行 task listener,
+             * 如果当前线程没有 looper，则 主线程中执行
+             */
+            Looper looper = Looper.myLooper();
+            if (callbackOnMainThread || looper == null) {
+                looper = Looper.getMainLooper();
+            }
+            this.taskListener = new EventDispatcher(looper);
+        }
+
+        ((EventDispatcher) this.taskListener).taskListener = listener;
         return this;
     }
 
@@ -59,17 +86,22 @@ public abstract class AbstactTask implements ITask {
         return this;
     }
 
-    public AbstactTask withSpaceGuard(SpaceGuard spaceGuard) {
-        this.spaceGuard = spaceGuard;
-        this.spaceGuard.addGuardListener(this);
-        this.spaceGuard.guard();
-        return this;
-    }
+    public AbstactTask withGuard(SystemGuard... systemGuards) {
+        if (systemGuards == null || systemGuards.length == 0) {
+            Log.w(TAG, "withGuard: is nothing");
+            return this;
+        }
 
-    public AbstactTask withNetworkGuard(NetworkGuard networkGuard) {
-        this.networkGuard = networkGuard;
-        this.networkGuard.addGuardListener(this);
-        this.networkGuard.guard();
+        for (SystemGuard guard : this.systemGuards) {
+            guard.addGuardListener(this);
+            guard.guard();
+            this.systemGuards.add(guard);
+
+            if (guard instanceof SpaceGuard){
+                this.spaceGuard = (SpaceGuard) guard;
+            }
+        }
+
         return this;
     }
 
@@ -78,6 +110,15 @@ public abstract class AbstactTask implements ITask {
         return this;
     }
 
+    /**
+     * 如果需要在主线程中执行 callback，则需要在 withListener 之前调用此函数
+     *
+     * @return
+     */
+    public AbstactTask callbackOnMainThread() {
+        callbackOnMainThread = true;
+        return this;
+    }
 
     public RetryConfig getRetryConfig() {
         return retryConfig;
@@ -160,7 +201,7 @@ public abstract class AbstactTask implements ITask {
 
     @Override
     public void start() {
-        if(!isValidState()){
+        if (!isValidState()) {
             return;
         }
         State state = getState();
@@ -174,7 +215,7 @@ public abstract class AbstactTask implements ITask {
 
     @Override
     public void pause() {
-        if(!isValidState()){
+        if (!isValidState()) {
             return;
         }
         State state = getState();
@@ -188,7 +229,7 @@ public abstract class AbstactTask implements ITask {
 
     @Override
     public void stop() {
-        if(!isValidState()){
+        if (!isValidState()) {
             return;
         }
         release();
@@ -197,12 +238,11 @@ public abstract class AbstactTask implements ITask {
     @Override
     public void release() {
         this.state = State.RELEASE;
-        if (this.spaceGuard != null) {
-            this.spaceGuard.removeGuardListener(this);
+
+        for (SystemGuard guard : systemGuards) {
+            guard.removeGuardListener(this);
         }
-        if (this.networkGuard != null) {
-            this.networkGuard.removeGuardListener(this);
-        }
+        systemGuards.clear();
     }
 
     private boolean isValidState() {
@@ -211,4 +251,112 @@ public abstract class AbstactTask implements ITask {
 
         return true;
     }
+
+    private static class EventDispatcher extends Handler implements TaskListener {
+
+        private final static String TAG = "EventDispatcher";
+
+        public final static int MSG_TASK_START = 1001;
+        public final static int MSG_TASK_UPDATE = 1002;
+        public final static int MSG_TASK_COMPLETE = 1003;
+        public final static int MSG_TASK_PAUSE = 1004;
+        public final static int MSG_TASK_STOP = 1005;
+        public final static int MSG_TASK_ERROR = 1111;
+
+        private TaskListener taskListener;
+
+        private EventDispatcher(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+
+            if (msg.what != MSG_TASK_UPDATE) {
+                Log.d(TAG, "handleMessage: " + msg);
+            }
+
+            if (taskListener == null) {
+                Log.w(TAG, "handleMessage: taskListener is null");
+                return;
+            }
+
+            switch (msg.what) {
+                case MSG_TASK_UPDATE:
+                    taskListener.onUpdateProgress((DownloadItem) msg.obj, msg.arg1);
+                    break;
+                case MSG_TASK_START:
+                    taskListener.onStart((DownloadItem) msg.obj);
+                    break;
+                case MSG_TASK_PAUSE:
+                    taskListener.onPause((DownloadItem) msg.obj, msg.arg1);
+                    break;
+                case MSG_TASK_COMPLETE:
+                    taskListener.onCompleted((DownloadItem) msg.obj);
+                    break;
+                case MSG_TASK_STOP:
+                    taskListener.onStop((DownloadItem) msg.obj, msg.arg1, msg.getData().getString("message"));
+                    break;
+                case MSG_TASK_ERROR:
+                    taskListener.onError((DownloadItem) msg.obj, (Error) msg.getData().getSerializable("error"));
+                    break;
+            }
+        }
+
+        @Override
+        public void onStart(DownloadItem item) {
+            Message msg = obtainMessage(MSG_TASK_START);
+            msg.obj = item;
+            msg.sendToTarget();
+        }
+
+        @Override
+        public void onCompleted(DownloadItem item) {
+            Message msg = obtainMessage(MSG_TASK_COMPLETE);
+            msg.obj = item;
+            msg.sendToTarget();
+        }
+
+        @Override
+        public void onUpdateProgress(DownloadItem item, int percent) {
+            Message msg = obtainMessage(MSG_TASK_UPDATE);
+            msg.obj = item;
+            msg.arg1 = percent;
+            msg.sendToTarget();
+        }
+
+        @Override
+        public void onPause(DownloadItem item, int percent) {
+            Message msg = obtainMessage(MSG_TASK_PAUSE);
+            msg.obj = item;
+            msg.arg1 = percent;
+            msg.sendToTarget();
+        }
+
+        @Override
+        public void onError(DownloadItem item, Error error) {
+            Message msg = obtainMessage(MSG_TASK_ERROR);
+            msg.obj = item;
+
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("error", error);
+            msg.setData(bundle);
+
+            msg.sendToTarget();
+        }
+
+        @Override
+        public void onStop(DownloadItem item, int reason, String message) {
+            Message msg = obtainMessage(MSG_TASK_STOP);
+            msg.obj = item;
+            msg.arg1 = reason;
+
+            Bundle bundle = new Bundle();
+            bundle.putString("message", message);
+            msg.setData(bundle);
+
+            msg.sendToTarget();
+        }
+    }
+
 }

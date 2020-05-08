@@ -21,12 +21,12 @@ public class AbstractListener implements TaskListener {
     }
 
     @Override
-    public void onUpdateProgress(DownloadItem item, long percent) {
+    public void onUpdateProgress(DownloadItem item, int percent) {
         Log.d(TAG, "onUpdateProgress: item = " + item + ", percent = " + percent);
     }
 
     @Override
-    public void onPause(DownloadItem item, long percent) {
+    public void onPause(DownloadItem item, int percent) {
         Log.w(TAG, "onPause: item = " + item + ", percent = " + percent);
     }
 
