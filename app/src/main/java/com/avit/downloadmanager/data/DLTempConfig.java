@@ -19,6 +19,11 @@ public final class DLTempConfig {
     public long end;
 
     /**
+     * already write
+     */
+    public long written;
+
+    /**
      * full path
      */
     public String filePath;

@@ -51,11 +51,13 @@ public abstract class AbstactTask implements ITask {
         this.systemGuards = new ArrayList<>(2);
 
         this.downloadItem = downloadItem;
+
+        this.taskListener = EventDispatcher.DUMMY;
     }
 
     public AbstactTask withListener(TaskListener listener) {
 
-        if (this.taskListener == null) {
+        if (this.taskListener == EventDispatcher.DUMMY) {
             /**
              * 默认在当前线程的 looper中执行 task listener,
              * 如果当前线程没有 looper，则 主线程中执行
@@ -151,7 +153,7 @@ public abstract class AbstactTask implements ITask {
             return Boolean.FALSE;
         }
 
-        if (isValidState() && taskListener != null) {
+        if (taskListener != null) {
             taskListener.onCompleted(downloadItem);
         }
 
@@ -255,6 +257,8 @@ public abstract class AbstactTask implements ITask {
     private static class EventDispatcher extends Handler implements TaskListener {
 
         private final static String TAG = "EventDispatcher";
+
+        private final static EventDispatcher DUMMY = new EventDispatcher(Looper.getMainLooper());
 
         public final static int MSG_TASK_START = 1001;
         public final static int MSG_TASK_UPDATE = 1002;
