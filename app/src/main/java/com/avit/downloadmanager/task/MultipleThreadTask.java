@@ -260,9 +260,6 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             fileOutputStream.flush();
             fileOutputStream.close();
 
-            fileInputStream = null;
-            fileOutputStream = null;
-
             file.renameTo(new File(filePath));
 
             /**
