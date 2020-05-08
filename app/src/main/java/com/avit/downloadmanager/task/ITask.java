@@ -10,8 +10,6 @@ import java.util.concurrent.Callable;
 
 public interface ITask extends Callable<Boolean>, IGuardListener {
 
-    RetryConfig getRetryConfig();
-
     DownloadItem getDownloadItem();
 
     TaskListener getTaskListener();

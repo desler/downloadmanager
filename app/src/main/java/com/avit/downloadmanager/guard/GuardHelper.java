@@ -1,6 +1,5 @@
 package com.avit.downloadmanager.guard;
 
-import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -67,8 +66,6 @@ final class GuardHelper {
 
 
     public void notifyEvent(IGuard.Type type, GuardEvent event) {
-
-        event.type = type;
 
         GuardEvent.dump(event);
 

@@ -3,6 +3,8 @@ package com.avit.downloadmanager.task;
 import com.avit.downloadmanager.data.DLTempConfig;
 import com.avit.downloadmanager.data.DownloadItem;
 
+import java.io.File;
+
 public class SingleThreadTask extends AbstactTask {
 
     private DLTempConfig tempConfig;
@@ -22,6 +24,7 @@ public class SingleThreadTask extends AbstactTask {
         if (tempConfig == null){
             tempConfig = new DLTempConfig();
             tempConfig.key = getDownloadItem().getKey();
+            tempConfig.filePath = downloadItem.getSavePath() + File.pathSeparator + downloadItem.getFilename();
         }
 
         if (taskListener != null){

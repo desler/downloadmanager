@@ -5,7 +5,9 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.avit.downloadmanager.data.DownloadItem;
+import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.GuardEvent;
+import com.avit.downloadmanager.task.AbstactTask;
 import com.avit.downloadmanager.task.ITask;
 import com.avit.downloadmanager.task.TaskListener;
 import com.avit.downloadmanager.verify.VerifyConfig;
@@ -21,7 +23,7 @@ public final class RetryTask implements ITask {
 
     private final static String TAG = "RetryTask";
 
-    private ScheduledExecutorService retryService = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+    private final ScheduledExecutorService retryService = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
         @Override
         public Thread newThread(Runnable r) {
             Thread thread = new Thread(r);
@@ -36,23 +38,27 @@ public final class RetryTask implements ITask {
         }
     });
 
-    private ITask task;
-    private RetryConfig retryConfig;
+    private final ITask task;
+    private final TaskListener orgTaskListener;
+    private final RetryConfig retryConfig;
 
     private int retryTimes;
     private long step;
 
-    public RetryTask(ITask task) {
+    public RetryTask(ITask task, RetryConfig retryConfig) {
         this.task = task;
-        this.retryConfig = task.getRetryConfig();
+        this.retryConfig = retryConfig;
 
-        this.retryTimes = this.retryConfig.getRetryCount();
+        AbstactTask ts = (AbstactTask) this.task;
+        orgTaskListener = ts.getTaskListener();
+
+        ts.withListener(new ProxyTaskListener());
     }
 
     @Override
     public Boolean call() {
 
-        if (retryConfig == null || !retryConfig.isRetry()) {
+        if (retryConfig == null || !retryConfig.isRetry() || retryConfig.getRetryCount() == 0) {
 
             long begin = System.currentTimeMillis();
 
@@ -62,10 +68,13 @@ public final class RetryTask implements ITask {
                 return result == null ? Boolean.FALSE : result;
             } catch (Throwable e) {
                 Log.e(TAG, "call: ", e);
+                task.getTaskListener().onError(task.getDownloadItem(), null);
             }
 
             return Boolean.FALSE;
         }
+
+        this.retryTimes = this.retryConfig.getRetryCount();
 
         if (retryConfig.isStableDelayed()) {
             step = 0;
@@ -80,8 +89,14 @@ public final class RetryTask implements ITask {
             long delayed = retryConfig.getBaseDelayed() + (i % retryConfig.getRepeatStepTimes()) * step;
             String message = "";
 
+            --retryTimes;
+
             FutureTask<Boolean> futureTask = (FutureTask<Boolean>) retryService.schedule(task, delayed, TimeUnit.MILLISECONDS);
             long begin = System.currentTimeMillis();
+
+            /**
+             * here, will be blocked.
+             */
             try {
                 result = futureTask.get();
                 if (result != null && result.booleanValue()) {
@@ -96,20 +111,14 @@ public final class RetryTask implements ITask {
             if (retryConfig.getRetryListener() != null) {
                 retryConfig.getRetryListener().onRetry(task.getDownloadItem(), i + 1, -1, message);
             }
-
-            --retryTimes;
         }
 
         if (retryTimes <= 0) {
             Log.e(TAG, "call: retry too many times > " + retryConfig.getRetryCount());
+//            task.getTaskListener().onError(task.getDownloadItem(), null);
         }
 
         return (result == null ? Boolean.FALSE : result);
-    }
-
-    @Override
-    public RetryConfig getRetryConfig() {
-        return task.getRetryConfig();
     }
 
     @Override
@@ -126,6 +135,20 @@ public final class RetryTask implements ITask {
     public List<VerifyConfig> getVerifyConfigs() {
         return task.getVerifyConfigs();
     }
+
+    private boolean isLastRetry() {
+        return retryTimes <= 0;
+    }
+
+    private boolean isFirstRetry() {
+
+        if (retryConfig == null || !retryConfig.isRetry() || retryConfig.getRetryCount() == 0) {
+            return true;
+        }
+
+        return retryTimes == (retryConfig.getRetryCount() - 1);
+    }
+
 
     public void release() {
         task.release();
@@ -155,5 +178,47 @@ public final class RetryTask implements ITask {
     @Override
     public boolean onGuardEvent(GuardEvent guardEvent) {
         return false;
+    }
+
+
+    private class ProxyTaskListener implements TaskListener {
+
+        @Override
+        public void onStart(DownloadItem item) {
+            if (isFirstRetry()) {
+                orgTaskListener.onStart(item);
+            } else {
+                Log.w(TAG, "onStart: intercept by ProxyTaskListener");
+            }
+        }
+
+        @Override
+        public void onCompleted(DownloadItem item) {
+            orgTaskListener.onCompleted(item);
+        }
+
+        @Override
+        public void onUpdateProgress(DownloadItem item, int percent) {
+            orgTaskListener.onUpdateProgress(item, percent);
+        }
+
+        @Override
+        public void onPause(DownloadItem item, int percent) {
+            orgTaskListener.onPause(item, percent);
+        }
+
+        @Override
+        public void onError(DownloadItem item, Error error) {
+            if (isLastRetry()) {
+                orgTaskListener.onError(item, error);
+            } else {
+                Log.w(TAG, "onError: intercept by ProxyTaskListener");
+            }
+        }
+
+        @Override
+        public void onStop(DownloadItem item, int reason, String message) {
+            orgTaskListener.onStop(item, reason, message);
+        }
     }
 }

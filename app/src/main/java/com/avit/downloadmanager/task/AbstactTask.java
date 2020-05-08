@@ -122,16 +122,12 @@ public abstract class AbstactTask implements ITask {
         return this;
     }
 
-    public RetryConfig getRetryConfig() {
-        return retryConfig;
-    }
-
     public DownloadItem getDownloadItem() {
         return downloadItem;
     }
 
     public TaskListener getTaskListener() {
-        return taskListener;
+        return ((EventDispatcher)taskListener).taskListener;
     }
 
     public List<VerifyConfig> getVerifyConfigs() {
