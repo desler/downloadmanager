@@ -6,16 +6,14 @@ import com.avit.downloadmanager.data.DLTempConfig;
 import com.avit.downloadmanager.data.DownloadItem;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.HttpURLConnection;
 
 public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnProgressListener {
 
-    private final static String pathFormat = "%s/%";
+    private final static String pathFormat = "%s/%s";
 
-    private DLTempConfig tempConfig;
+    private DLTempConfig dlConfig;
     private DownloadHelper downloadHelper;
     private long fileLength;
 
@@ -42,17 +40,18 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
 
         try {
             downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath()).created();
-            int responseCode = downloadHelper.getResponseCode();
 
-            Log.d(TAG, "onStart: responseCode = " + responseCode);
+            int responseCode = downloadHelper.getResponseCode();
             if (HttpURLConnection.HTTP_OK == responseCode || responseCode == HttpURLConnection.HTTP_PARTIAL) {
                 fileLength = downloadHelper.getContentLength();
             } else {
+                Log.e(TAG, "onStart: responseCode = " + responseCode);
                 return false;
             }
+            Log.d(TAG, "onStart: fileLength = " + fileLength);
 
-            if (tempConfig == null) {
-                tempConfig = createDLTempConfig(fileLength);
+            if (dlConfig == null) {
+                dlConfig = createDLTempConfig(fileLength);
             }
 
             taskListener.onStart(downloadItem);
@@ -67,16 +66,66 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
         return false;
     }
 
+
+    /**
+     * written size
+     *
+     * @return
+     */
+    private long resumeBreakPoint() {
+
+        File ftmp = new File(dlConfig.filePath + ".tmp");
+        if (!supportBreakpoint) {
+            Log.d(TAG, "resumeBreakPoint: always delete " + ftmp.delete());
+            return 0;
+        }
+
+        if (ftmp.exists()) {
+
+            if (!ftmp.isFile()) {
+                Log.e(TAG, "resumeBreakPoint: dir delete " + ftmp.delete());
+                return 0;
+            }
+
+            /**
+             * 防止 最终的 末端 读写出现异常，导致 数据不正确，此处 回退 512 个字节
+             */
+            long existLength = ftmp.length() - 512;
+
+            /**
+             * 如果 大于 0 ，证明已经下载了部分数据， 支持 断点续写
+             */
+            existLength = existLength < 0 ? 0 : existLength;
+            if (existLength == 0) {
+                Log.w(TAG, "resumeBreakPoint: zero delete " + ftmp.delete());
+            }
+
+            return existLength;
+        }
+
+        return 0;
+    }
+
     @Override
     protected boolean onDownload() {
 
-        if (!spaceGuard.occupySize(fileLength)) {
+        /**
+         * 检测是否需要 断点续写
+         */
+        long writtenLength = resumeBreakPoint();
+
+        Log.d(TAG, "onDownload: written length = " + writtenLength);
+
+        if (writtenLength > 0) {
+            downloadHelper.withRange(writtenLength, fileLength);
+        }
+
+        if (!spaceGuard.occupySize(fileLength - writtenLength)) {
             return false;
         }
 
         try {
-            File file = downloadHelper.withProgressListener(this)
-                    .retrieveFile(downloadItem.getSavePath() + File.pathSeparator + downloadItem.getFilename());
+            downloadHelper.withProgressListener(this).retrieveFile(dlConfig.filePath);
             return true;
         } catch (IOException e) {
             Log.e(TAG, "onDownload: ", e);
@@ -100,6 +149,7 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
 
     @Override
     public void onProgress(String dlPath, String filePath, int length) {
+        dlConfig.written = length;
         taskListener.onUpdateProgress(downloadItem, (int) (length * 1.0f / fileLength * 100));
     }
 }
