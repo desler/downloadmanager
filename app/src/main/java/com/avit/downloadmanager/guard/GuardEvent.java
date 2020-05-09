@@ -32,7 +32,7 @@ public class GuardEvent {
     }
 
     public static String dump(GuardEvent guardEvent) {
-        String dump = String.format("[%s, %d, %s, %s]", guardEvent.type.name(), guardEvent.reason, guardEvent.message, guardEvent.objExt);
+        String dump = String.format("[%s, %d, %s, \r\n%s, %ld]", guardEvent.type.name(), guardEvent.reason, guardEvent.message, guardEvent.objExt, guardEvent.longExt);
         Log.i("GuardEvent", dump);
         return dump;
     }
