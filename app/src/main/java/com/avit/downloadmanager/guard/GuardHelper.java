@@ -9,7 +9,7 @@ import java.util.Map;
 
 final class GuardHelper {
 
-    public final static String TAG = "Guard";
+    public final static String TAG = "GuardHelper";
 
     private final static GuardHelper sInstance = new GuardHelper();
 

@@ -4,6 +4,10 @@ import android.util.Log;
 
 import com.avit.downloadmanager.data.DLTempConfig;
 import com.avit.downloadmanager.data.DownloadItem;
+import com.avit.downloadmanager.download.DownloadHelper;
+import com.avit.downloadmanager.guard.GuardEvent;
+import com.avit.downloadmanager.guard.IGuard;
+import com.avit.downloadmanager.guard.SpaceGuardEvent;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,6 +20,9 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
     private DLTempConfig dlConfig;
     private DownloadHelper downloadHelper;
     private long fileLength;
+
+    private final Object spaceWait = new Object();
+    private final Object stateWait = new Object();
 
     public SingleThreadTask(DownloadItem downloadItem) {
         super(downloadItem);
@@ -60,6 +67,8 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
 
         } catch (IOException e) {
             Log.e(TAG, "onStart: ", e);
+            downloadHelper.release();
+
             taskListener.onError(downloadItem, null);
         }
 
@@ -120,9 +129,17 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
             downloadHelper.withRange(writtenLength, fileLength);
         }
 
-        if (!spaceGuard.occupySize(fileLength - writtenLength)) {
-            return false;
+        while (!spaceGuard.occupySize(fileLength - writtenLength)) {
+            synchronized (spaceWait) {
+                try {
+                    spaceWait.wait();
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "onDownload: ", e);
+                }
+            }
         }
+
+        state = State.LOADING;
 
         try {
             downloadHelper.withProgressListener(this).retrieveFile(dlConfig.filePath);
@@ -130,6 +147,11 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
         } catch (IOException e) {
             Log.e(TAG, "onDownload: ", e);
             taskListener.onError(downloadItem, null);
+        } catch (TaskException e){
+            taskListener.onStop(downloadItem, 0, null);
+        }finally {
+            Log.d(TAG, "onDownload: always release");
+            downloadHelper.release();
         }
 
         return false;
@@ -138,6 +160,7 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
 
     @Override
     public void start() {
+        notifyState();
         super.start();
     }
 
@@ -151,5 +174,42 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
     public void onProgress(String dlPath, String filePath, int length) {
         dlConfig.written = length;
         taskListener.onUpdateProgress(downloadItem, (int) (length * 1.0f / fileLength * 100));
+
+        while (getState() == State.PAUSE){
+            Log.d(TAG, "onProgress: state = " + getState().name());
+            synchronized (stateWait){
+                try {
+                    spaceWait.wait();
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "onProgress: ", e);
+                }
+            }
+        }
+
+        if (getState() == State.RELEASE){
+            Log.w(TAG, "onProgress: state = " + getState().name());
+            throw new TaskException("task already release");
+        }
     }
+
+    private void notifyState() {
+        stateWait.notifyAll();
+    }
+
+    private void notifySpace() {
+        spaceWait.notifyAll();
+    }
+
+    @Override
+    public boolean onGuardEvent(GuardEvent guardEvent) {
+        super.onGuardEvent(guardEvent);
+
+        if (guardEvent.type == IGuard.Type.SPACE) {
+            if (guardEvent.reason == SpaceGuardEvent.EVENT_ENOUGH) {
+                notifySpace();
+            }
+        }
+        return true;
+    }
+
 }

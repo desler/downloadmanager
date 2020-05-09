@@ -25,4 +25,17 @@ public final class Error implements Serializable {
         this.message = message;
         this.err = err;
     }
+
+    enum Type {
+        ERROR_SYSTEM(1000), ERROR_FILE(2000), ERROR_DATA(3000), ERROR_NETWORK(4000), ERROR_UNKNOWN(9000);
+        private int value;
+
+        Type(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return value;
+        }
+    }
 }

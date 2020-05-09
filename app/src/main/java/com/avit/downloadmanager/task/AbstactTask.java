@@ -47,11 +47,9 @@ public abstract class AbstactTask implements ITask {
 
         this.retryConfig = RetryConfig.create();
         this.verifyConfigs = new ArrayList<>(1);
-
         this.systemGuards = new ArrayList<>(2);
 
         this.downloadItem = downloadItem;
-
         this.taskListener = EventDispatcher.DUMMY;
     }
 
@@ -140,6 +138,7 @@ public abstract class AbstactTask implements ITask {
         if (isValidState() && !onStart()) {
             return Boolean.FALSE;
         }
+        state = State.START;
 
         if (isValidState() && !onDownload()) {
             return Boolean.FALSE;
@@ -149,6 +148,7 @@ public abstract class AbstactTask implements ITask {
             return Boolean.FALSE;
         }
 
+        state = State.COMPLETE;
         if (taskListener != null) {
             taskListener.onCompleted(downloadItem);
         }
@@ -244,8 +244,8 @@ public abstract class AbstactTask implements ITask {
     }
 
     private boolean isValidState() {
-        if (state == State.RELEASE)
-            throw new IllegalStateException("" + this + " already RELEASE");
+        if (state == State.RELEASE || state == State.ERROR)
+            throw new IllegalStateException("" + this + " already " + state.name());
 
         return true;
     }

@@ -1,6 +1,8 @@
-package com.avit.downloadmanager.task;
+package com.avit.downloadmanager.download;
 
 import android.text.TextUtils;
+import android.util.Log;
+import android.webkit.URLUtil;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -12,6 +14,8 @@ import java.net.URL;
 import java.util.Locale;
 
 public final class DownloadHelper {
+
+    private final static String TAG = "DownloadHelper";
 
     private final static int CONNECT_TIMEOUT = 3 * 1000;
     private final static int READ_TIMEOUT = 3 * 1000;
@@ -34,17 +38,33 @@ public final class DownloadHelper {
 
     public DownloadHelper withRange(long start, long end) {
         range = String.format(Locale.ENGLISH, "bytes=%ld-%ld", start, end);
+        Log.d(TAG, "withRange: " + range);
         return this;
     }
 
     public DownloadHelper created() throws IOException {
-        URL url = new URL(this.dlPath);
-        this.httpURLConnection = (HttpURLConnection) url.openConnection();
-        this.httpURLConnection.setConnectTimeout(CONNECT_TIMEOUT);
-        this.httpURLConnection.setReadTimeout(READ_TIMEOUT);
-        if (!TextUtils.isEmpty(range)) {
-            this.httpURLConnection.setRequestProperty("Range", range);
+
+        if (URLUtil.isHttpUrl(dlPath)) {
+            URL url = new URL(this.dlPath);
+            this.httpURLConnection = (HttpURLConnection) url.openConnection();
+            this.httpURLConnection.setConnectTimeout(CONNECT_TIMEOUT);
+            this.httpURLConnection.setReadTimeout(READ_TIMEOUT);
+            if (!TextUtils.isEmpty(range)) {
+                this.httpURLConnection.setRequestProperty("Range", range);
+            }
+        } else if (URLUtil.isHttpsUrl(dlPath)) {
+
+        } else if (URLUtil.isAssetUrl(dlPath)) {
+
+        } else if (URLUtil.isFileUrl(dlPath)) {
+
+        } else if (URLUtil.isContentUrl(dlPath)) {
+
+        } else {
+            throw new IllegalArgumentException("do not support path : " + dlPath);
         }
+
+
         return this;
     }
 
@@ -64,8 +84,8 @@ public final class DownloadHelper {
     public File retrieveFile(String fileFullPath) throws IOException {
         this.inputStream = httpURLConnection.getInputStream();
 
-        File file = new File(fileFullPath + ".tmp");
-        this.outputStream = new FileOutputStream(file);
+        File tmp = new File(fileFullPath + ".tmp");
+        this.outputStream = new FileOutputStream(tmp);
 
         byte[] buffer = new byte[BUFFER_SIZE];
         int offset = 0, totalBytes = 0;
@@ -80,12 +100,17 @@ public final class DownloadHelper {
 
         release();
 
-        boolean isRename = file.renameTo(new File(fileFullPath));
-        if (!isRename) {
-            throw new IOException(file.getPath() + " rename FAILED");
+        File file = new File(fileFullPath);
+        if (file.exists()) {
+            Log.w(TAG, "retrieveFile: " + file.delete());
         }
 
-        return file;
+        boolean isRename = tmp.renameTo(file);
+        if (!isRename) {
+            throw new IOException(tmp.getPath() + " rename FAILED");
+        }
+
+        return tmp;
     }
 
     public void release() {
@@ -112,7 +137,7 @@ public final class DownloadHelper {
         }
     }
 
-    interface OnProgressListener {
+    public interface OnProgressListener {
         void onProgress(String dlPath, String filePath, int length);
     }
 }
