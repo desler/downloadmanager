@@ -136,7 +136,7 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
             Log.d(TAG, "onProgress: state = " + getState().name());
             synchronized (stateWait){
                 try {
-                    spaceWait.wait();
+                    stateWait.wait();
                 } catch (InterruptedException e) {
                     Log.e(TAG, "onProgress: ", e);
                 }
