@@ -9,16 +9,8 @@ public final class ImmediatelyExecutor extends AbsExecutor {
 
     }
 
-    public ImmediatelyExecutor(RetryTask... executors){
-
-    }
-
     public ImmediatelyExecutor submit(ITask task){
-        submit(new RetryTask(task));
-        return this;
-    }
-
-    public ImmediatelyExecutor submit(RetryTask executor){
+        submit(task);
         return this;
     }
 

@@ -36,12 +36,7 @@ public final class SequentialExecutor extends AbsExecutor {
     }
 
     public SequentialExecutor submit(ITask task) {
-        futureTask = (FutureTask<Boolean>) seqExecutor.submit(new RetryTask(task));
-        return this;
-    }
-
-    public SequentialExecutor submit(RetryTask executor) {
-        futureTask = (FutureTask<Boolean>) seqExecutor.submit(executor);
+        futureTask = (FutureTask<Boolean>) seqExecutor.submit(task);
         return this;
     }
 
