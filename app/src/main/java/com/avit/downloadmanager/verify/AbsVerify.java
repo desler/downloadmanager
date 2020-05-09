@@ -3,9 +3,6 @@ package com.avit.downloadmanager.verify;
 import android.text.TextUtils;
 import android.util.Log;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-
 public abstract class AbsVerify<CONTENT> implements IVerify{
 
     static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
@@ -28,9 +25,6 @@ public abstract class AbsVerify<CONTENT> implements IVerify{
         this.content = content;
     }
 
-    abstract boolean isValidCRC32(String crc32);
-    abstract boolean isValidDigest(String type, String digest);
-
     public CONTENT getContent() {
         return content;
     }
@@ -47,7 +41,7 @@ public abstract class AbsVerify<CONTENT> implements IVerify{
         }
 
         if (type == VerifyType.MD5 || type == VerifyType.SHA){
-            return isValidDigest(type.getValue(), verify);
+            return isValidDigest(type.getSubType(), verify);
         }
 
         if (type == VerifyType.CRC32){
@@ -58,4 +52,7 @@ public abstract class AbsVerify<CONTENT> implements IVerify{
 
         return true;
     }
+
+    abstract boolean isValidCRC32(String crc32);
+    abstract boolean isValidDigest(String type, String digest);
 }

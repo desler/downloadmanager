@@ -9,20 +9,20 @@ public interface IVerify{
             /**
              * default sha-1, others sha-256, sha-384, sha-512
              */
-            SHA.value = "SHA-1";
+            SHA.subType = "SHA-1";
         }
-        private String value;
+        private String subType;
 
         VerifyType() {
-            value = name();
+            subType = name();
         }
 
-        public String getValue() {
-            return value;
+        public String getSubType() {
+            return subType;
         }
 
-        public void setValue(String value) {
-            this.value = value;
+        public void setSubType(String subType) {
+            this.subType = subType;
         }
     }
 }
