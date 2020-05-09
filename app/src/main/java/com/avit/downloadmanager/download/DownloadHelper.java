@@ -113,6 +113,40 @@ public final class DownloadHelper {
         return tmp;
     }
 
+    /**
+     * base xxx.tmp file
+     * @param filePath
+     * @return
+     */
+    public long resumeBreakPoint(String filePath){
+        File ftmp = new File(filePath + ".tmp");
+
+        if (ftmp.exists()) {
+
+            if (!ftmp.isFile()) {
+                Log.e(TAG, "resumeBreakPoint: dir delete " + ftmp.delete());
+                return 0;
+            }
+
+            /**
+             * 防止 最终的 末端 读写出现异常，导致 数据不正确，此处 回退 512 个字节
+             */
+            long existLength = ftmp.length() - 512;
+
+            /**
+             * 如果 大于 0 ，证明已经下载了部分数据， 支持 断点续写
+             */
+            existLength = existLength < 0 ? 0 : existLength;
+            if (existLength == 0) {
+                Log.w(TAG, "resumeBreakPoint: zero delete " + ftmp.delete());
+            }
+
+            return existLength;
+        }
+
+        return 0;
+    }
+
     public void release() {
 
         try {

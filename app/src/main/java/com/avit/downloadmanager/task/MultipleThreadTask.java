@@ -386,9 +386,6 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
     @Override
     public void onError(DLTempConfig dlTempConfig, Error error) {
         hasError = true;
-
-        state = State.ERROR;
-
         taskListener.onError(downloadItem, null);
     }
 
@@ -416,12 +413,10 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
     private final static String TAG = "Multiple::SingleTask";
 
     private DownloadItem downloadItem;
-
     private DLTempConfig dlConfig;
     private boolean supportBreakpoint;
 
     private LoadListener loadListener;
-
     private DownloadHelper downloadHelper;
 
     private SpaceGuard spaceGuard;
@@ -456,44 +451,6 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         waitSpace.notifyAll();
     }
 
-    /**
-     * written size
-     *
-     * @return
-     */
-    private long resumeBreakPoint() {
-
-        File ftmp = new File(dlConfig.filePath + ".tmp");
-        if (!supportBreakpoint) {
-            Log.d(TAG, "resumeBreakPoint: always delete " + ftmp.delete());
-            return 0;
-        }
-
-        if (ftmp.exists()) {
-
-            if (!ftmp.isFile()) {
-                Log.e(TAG, "resumeBreakPoint: dir delete " + ftmp.delete());
-                return 0;
-            }
-            /**
-             * 防止 最终的 末端 读写出现异常，导致 数据不正确，此处 回退 512 个字节
-             */
-            long existLength = ftmp.length() - 512;
-
-            /**
-             * 如果 大于 0 ，证明已经下载了部分数据， 支持 断点续写
-             */
-            existLength = existLength < 0 ? 0 : existLength;
-            if (existLength == 0) {
-                Log.w(TAG, "resumeBreakPoint: zero delete " + ftmp.delete());
-            }
-
-            return existLength;
-        }
-
-        return 0;
-    }
-
     @Override
     public DLTempConfig call() throws Exception {
 
@@ -501,7 +458,8 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
             throw new IllegalStateException("DLTempConfig not set");
         }
 
-        long written = resumeBreakPoint();
+        long written = supportBreakpoint ? downloadHelper.resumeBreakPoint(dlConfig.filePath) : 0;
+        Log.d(TAG, "call: written length = " + written);
         if (written > 0) {
             downloadHelper.withRange(dlConfig.start + written, dlConfig.end);
         }

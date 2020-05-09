@@ -75,56 +75,14 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
         return false;
     }
 
-
-    /**
-     * written size
-     *
-     * @return
-     */
-    private long resumeBreakPoint() {
-
-        File ftmp = new File(dlConfig.filePath + ".tmp");
-        if (!supportBreakpoint) {
-            Log.d(TAG, "resumeBreakPoint: always delete " + ftmp.delete());
-            return 0;
-        }
-
-        if (ftmp.exists()) {
-
-            if (!ftmp.isFile()) {
-                Log.e(TAG, "resumeBreakPoint: dir delete " + ftmp.delete());
-                return 0;
-            }
-
-            /**
-             * 防止 最终的 末端 读写出现异常，导致 数据不正确，此处 回退 512 个字节
-             */
-            long existLength = ftmp.length() - 512;
-
-            /**
-             * 如果 大于 0 ，证明已经下载了部分数据， 支持 断点续写
-             */
-            existLength = existLength < 0 ? 0 : existLength;
-            if (existLength == 0) {
-                Log.w(TAG, "resumeBreakPoint: zero delete " + ftmp.delete());
-            }
-
-            return existLength;
-        }
-
-        return 0;
-    }
-
     @Override
     protected boolean onDownload() {
 
         /**
          * 检测是否需要 断点续写
          */
-        long writtenLength = resumeBreakPoint();
-
+        long writtenLength = supportBreakpoint ? downloadHelper.resumeBreakPoint(dlConfig.filePath) : 0;
         Log.d(TAG, "onDownload: written length = " + writtenLength);
-
         if (writtenLength > 0) {
             downloadHelper.withRange(writtenLength, fileLength);
         }
