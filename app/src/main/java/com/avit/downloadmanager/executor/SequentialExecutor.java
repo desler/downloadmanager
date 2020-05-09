@@ -12,6 +12,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadFactory;
 
+/**
+ * 排队 将 任务 一个个 执行
+ */
 public final class SequentialExecutor extends AbsExecutor {
     private final static String TAG = "SequentialExecutor";
 
