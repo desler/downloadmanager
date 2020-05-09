@@ -21,8 +21,9 @@ public interface IVerify{
             return subType;
         }
 
-        public void setSubType(String subType) {
+        public VerifyType setSubType(String subType) {
             this.subType = subType;
+            return this;
         }
     }
 }

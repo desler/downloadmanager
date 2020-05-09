@@ -72,7 +72,7 @@ public final class RetryConfig implements RetryListener {
      * @param delayed ms
      * @return
      */
-    public RetryConfig withRetryDelayed(long delayed){
+    public RetryConfig withRetryDelayed(long delayed) {
         this.baseDelayed = delayed;
         return this;
     }
@@ -93,8 +93,11 @@ public final class RetryConfig implements RetryListener {
 
     public RetryConfig retry(int count) {
         this.isRetry = true;
-        this.retryCount = count;
-
+        if (count == -1) {
+            this.retryCount = Integer.MAX_VALUE;
+        } else {
+            this.retryCount = count;
+        }
         return this;
     }
 
