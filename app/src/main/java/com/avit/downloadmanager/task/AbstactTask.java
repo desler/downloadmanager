@@ -28,9 +28,8 @@ public abstract class AbstactTask implements ITask {
 
     protected DownloadItem downloadItem;
     protected TaskListener taskListener;
-    protected RetryConfig retryConfig;
-    protected List<VerifyConfig> verifyConfigs;
 
+    protected List<VerifyConfig> verifyConfigs;
     protected List<SystemGuard> systemGuards;
     /**
      * 关于 磁盘 空间大小的 guard，需要单独拎出来，因为 需要实时监控 磁盘空间大小。
@@ -45,7 +44,6 @@ public abstract class AbstactTask implements ITask {
     public AbstactTask(DownloadItem downloadItem) {
         TAG = getClass().getSimpleName();
 
-        this.retryConfig = RetryConfig.create();
         this.verifyConfigs = new ArrayList<>(1);
         this.systemGuards = new ArrayList<>(2);
 
@@ -68,11 +66,6 @@ public abstract class AbstactTask implements ITask {
         }
 
         ((EventDispatcher) this.taskListener).taskListener = listener;
-        return this;
-    }
-
-    public AbstactTask withRetryConfig(RetryConfig config) {
-        retryConfig = config;
         return this;
     }
 
