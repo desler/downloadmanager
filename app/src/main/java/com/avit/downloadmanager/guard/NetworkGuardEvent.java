@@ -1,15 +1,16 @@
 package com.avit.downloadmanager.guard;
 
 public class NetworkGuardEvent extends GuardEvent {
-    public NetworkGuardEvent(IGuard.Type type, int reason, String message) {
-        super(type, reason, message);
+
+    public NetworkGuardEvent(int reason, String message) {
+        super(IGuard.Type.NETWORK, reason, message);
     }
 
-    public NetworkGuardEvent(IGuard.Type type, int reason, String message, Object objExt) {
-        super(type, reason, message, objExt);
+    public NetworkGuardEvent(int reason, String message, Object objExt) {
+        super(IGuard.Type.NETWORK, reason, message, objExt);
     }
 
-    public NetworkGuardEvent(IGuard.Type type, int reason, String message, Object objExt, long longExt) {
-        super(type, reason, message, objExt, longExt);
+    public NetworkGuardEvent(int reason, String message, Object objExt, long longExt) {
+        super(IGuard.Type.NETWORK, reason, message, objExt, longExt);
     }
 }
