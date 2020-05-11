@@ -68,7 +68,6 @@ public final class RetryTask implements ITask {
                 return result == null ? Boolean.FALSE : result;
             } catch (Throwable e) {
                 Log.e(TAG, "call: ", e);
-                task.getTaskListener().onError(task.getDownloadItem(), null);
             }
 
             return Boolean.FALSE;
@@ -115,7 +114,6 @@ public final class RetryTask implements ITask {
 
         if (retryTimes <= 0) {
             Log.e(TAG, "call: retry too many times > " + retryConfig.getRetryCount());
-//            task.getTaskListener().onError(task.getDownloadItem(), null);
         }
 
         return (result == null ? Boolean.FALSE : result);
@@ -212,7 +210,8 @@ public final class RetryTask implements ITask {
             if (isLastRetry()) {
                 orgTaskListener.onError(item, error);
             } else {
-                Log.w(TAG, "onError: intercept by ProxyTaskListener");
+                error.dump();
+                Log.w(TAG, "onError: intercept by ProxyTaskListener " + error);
             }
         }
 

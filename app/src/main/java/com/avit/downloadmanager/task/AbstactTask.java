@@ -49,6 +49,8 @@ public abstract class AbstactTask implements ITask {
 
         this.downloadItem = downloadItem;
         this.taskListener = EventDispatcher.DUMMY;
+
+        this.state = State.NONE;
     }
 
     public AbstactTask withListener(TaskListener listener) {

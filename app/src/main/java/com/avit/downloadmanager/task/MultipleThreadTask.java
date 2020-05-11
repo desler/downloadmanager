@@ -99,6 +99,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             }
         } catch (IOException e) {
             Log.e(TAG, "onStart: ", e);
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), e.getMessage(), e));
             return false;
         } finally {
             Log.d(TAG, "onStart: downloadHelper release");
@@ -217,10 +218,15 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
         for (int i = 0; i < futures.length && !hasError; ++i) {
             try {
                 futures[i].get();
+            } catch (TaskException e) {
+                Log.e(TAG, "onDownload: ", e);
+                hasError = true;
+                taskListener.onStop(downloadItem, 0, e.getMessage());
+                break;
             } catch (Throwable e) {
                 Log.e(TAG, "onDownload: ", e);
                 hasError = true;
-                taskListener.onError(downloadItem, null);
+                taskListener.onError(downloadItem, new Error(Error.Type.ERROR_SYSTEM.value(), e.getMessage(), e));
             }
         }
 
@@ -329,7 +335,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
 
         } catch (Throwable e) {
             Log.e(TAG, "mergeFiles: ", e);
-            taskListener.onError(downloadItem, null);
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
         } finally {
             if (fileInputStream != null) {
                 try {
@@ -386,7 +392,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
     @Override
     public void onError(DLTempConfig dlTempConfig, Error error) {
         hasError = true;
-        taskListener.onError(downloadItem, null);
+        taskListener.onError(downloadItem, error);
     }
 
 
@@ -482,7 +488,7 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
             downloadHelper.withProgressListener(this).retrieveFile(dlConfig.filePath);
         } catch (IOException e) {
             Log.e(TAG, "call: ", e);
-            loadListener.onError(dlConfig, null);
+            loadListener.onError(dlConfig, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
         } finally {
             Log.d(TAG, "call: always release");
             downloadHelper.release();

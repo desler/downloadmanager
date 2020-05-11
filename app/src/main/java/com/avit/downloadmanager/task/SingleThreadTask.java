@@ -5,6 +5,7 @@ import android.util.Log;
 import com.avit.downloadmanager.data.DLTempConfig;
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.download.DownloadHelper;
+import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.guard.IGuard;
 import com.avit.downloadmanager.guard.SpaceGuardEvent;
@@ -67,8 +68,7 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
         } catch (IOException e) {
             Log.e(TAG, "onStart: ", e);
             downloadHelper.release();
-
-            taskListener.onError(downloadItem, null);
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), e.getMessage(), e));
         }
 
         return false;
@@ -103,9 +103,9 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
             return true;
         } catch (IOException e) {
             Log.e(TAG, "onDownload: ", e);
-            taskListener.onError(downloadItem, null);
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
         } catch (TaskException e){
-            taskListener.onStop(downloadItem, 0, null);
+            taskListener.onStop(downloadItem, 0, e.getMessage());
         }finally {
             Log.d(TAG, "onDownload: always release");
             downloadHelper.release();

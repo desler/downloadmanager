@@ -3,7 +3,6 @@ package com.avit.downloadmanager.task;
 import android.util.Log;
 
 import com.avit.downloadmanager.data.DownloadItem;
-import com.avit.downloadmanager.error.DumpError;
 import com.avit.downloadmanager.error.Error;
 
 public class AbstractListener implements TaskListener {
@@ -32,7 +31,7 @@ public class AbstractListener implements TaskListener {
 
     @Override
     public void onError(DownloadItem item, Error error) {
-        Log.e(TAG, "onError: item = " + item + ", error = " + DumpError.dump(error));
+        Log.e(TAG, "onError: item = " + item + ", error = " + error.dump());
     }
 
     @Override
