@@ -55,7 +55,7 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
                 Log.e(TAG, "onStart: responseCode = " + responseCode);
                 return false;
             }
-            Log.d(TAG, "onStart: fileLength = " + fileLength);
+            Log.d(TAG, "onStart: fileLength = " + size2String(fileLength) + ", file = " + downloadItem.getFilename());
 
             if (dlConfig == null) {
                 dlConfig = createDLTempConfig(fileLength);
@@ -65,13 +65,6 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
 
             return true;
 
-        } catch (IOException e) {
-            Log.e(TAG, "onStart: ", e);
-
-            if (downloadHelper != null)
-                downloadHelper.release();
-
-            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), e.getMessage(), e));
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "onStart: ", e);
 
@@ -79,6 +72,13 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
                 downloadHelper.release();
 
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(), e.getMessage(), e));
+        } catch (Throwable e) {
+            Log.e(TAG, "onStart: ", e);
+
+            if (downloadHelper != null)
+                downloadHelper.release();
+
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), e.getMessage(), e));
         }
 
         return false;
@@ -97,6 +97,7 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
         }
 
         while (!spaceGuard.occupySize(fileLength - writtenLength)) {
+            Log.w(TAG, "onDownload: wait ");
             synchronized (spaceWait) {
                 try {
                     spaceWait.wait();

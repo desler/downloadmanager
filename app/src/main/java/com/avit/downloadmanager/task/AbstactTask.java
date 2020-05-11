@@ -87,13 +87,13 @@ public abstract class AbstactTask implements ITask {
             return this;
         }
 
-        for (SystemGuard guard : this.systemGuards) {
+        for (SystemGuard guard : systemGuards) {
             guard.addGuardListener(this);
-            guard.guard();
             this.systemGuards.add(guard);
 
             if (guard instanceof SpaceGuard){
                 this.spaceGuard = (SpaceGuard) guard;
+                Log.d(TAG, "withGuard: add a spaceGuard = " + spaceGuard);
             }
         }
 
@@ -162,7 +162,7 @@ public abstract class AbstactTask implements ITask {
             return true;
         }
 
-        String itemPath = downloadItem.getSavePath() + File.pathSeparator + downloadItem.getFilename();
+        String itemPath = downloadItem.getSavePath() + File.separator + downloadItem.getFilename();
         File file = new File(itemPath);
         if (!file.exists()) {
             Log.e(TAG, "onVerify: " + itemPath + " not exists.");
@@ -354,4 +354,23 @@ public abstract class AbstactTask implements ITask {
         }
     }
 
+    static final long B = 1;
+    static final long K = 1024 * B;
+    static final long M = 1024 * K;
+    static final long G = 1024 * M;
+    static final long P = 1024 * G;
+
+    static String size2String(long size) {
+        if (size > G) {
+            return String.format("%.2fGB", size * 1.0f / G);
+        }
+        if (size > M) {
+            return String.format("%.2fMB", size * 1.0f / M);
+        }
+        if (size > K) {
+            return String.format("%.2fKB", size * 1.0f / K);
+        }
+
+        return String.format("%dB", size);
+    }
 }

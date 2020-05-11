@@ -13,9 +13,6 @@ public class DownloadItem {
 
     private String key;
 
-    private DownloadItem(){
-    }
-
     public DownloadItem withDlPath(String dlPath){
         this.dlPath = dlPath;
         return this;
@@ -28,6 +25,11 @@ public class DownloadItem {
 
     public DownloadItem withTag(Object object){
         this.object = object;
+        return this;
+    }
+
+    public DownloadItem withFilename(String filename) {
+        this.filename = filename;
         return this;
     }
 
@@ -45,7 +47,7 @@ public class DownloadItem {
 
     public String getKey() {
         if (TextUtils.isEmpty(key)){
-//            key = md5(version#dlPath)
+            key = filename;
         }
         return key;
     }

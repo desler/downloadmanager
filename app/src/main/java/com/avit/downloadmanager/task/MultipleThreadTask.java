@@ -180,7 +180,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
     }
 
     private void clearFiles() {
-        String path = downloadItem.getSavePath() + File.pathSeparator + downloadItem.getFilename();
+        String path = downloadItem.getSavePath() + File.separator + downloadItem.getFilename();
         String tmpPath = path + ".tmp";
 
         File file = new File(path);
@@ -212,7 +212,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             DLTempConfig tempConfig = dlTempConfigs[i];
             Log.d(TAG, String.format(Locale.ENGLISH, "onDownload: file span[%ld, %ld]", tempConfig.start, tempConfig.end));
 
-            singleTasks[i] = createSingleTask(tempConfig);
+            singleTasks[i] = createSingleTask(tempConfig).withSpaceGuard(spaceGuard);
             futures[i] = executorService.submit(singleTasks[i]);
         }
 

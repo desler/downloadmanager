@@ -1,6 +1,8 @@
 package com.avit.downloadmanager;
 
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -15,34 +17,41 @@ import com.avit.downloadmanager.task.retry.RetryConfig;
 import com.avit.downloadmanager.task.retry.RetryTask;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyConfig;
+import com.google.gson.Gson;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.SortedMap;
 
 public class MainActivity extends AppCompatActivity implements TaskListener {
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+    private final static String TAG = "MainActivity";
 
-        SpaceGuard.initFromSystem(this, null);
+    private void fillDownloadItem(DownloadItem item) {
+        String filename = item.getDlPath().substring(item.getDlPath().lastIndexOf("/") + 1);
+        item.withSavePath(this.getFilesDir().getPath())
+                .withFilename(filename);
+    }
 
+    private void submitDownloadTask(DownloadMock mock) {
         /**
          * 创建 下载需要使用的 数据单元
          */
-        DownloadItem downloadItem = DownloadItem.create();
+        DownloadItem downloadItem = mock.item;
 
-        /**
-         * 创建下载完成以后，需要到的校验，支持多个校验值
-         */
-        VerifyConfig md5 = VerifyConfig.create(IVerify.VerifyType.MD5, "");
-        VerifyConfig crc32 = VerifyConfig.create(IVerify.VerifyType.CRC32, "");
-        VerifyConfig sha_1 = VerifyConfig.create(IVerify.VerifyType.SHA, "");
-        VerifyConfig sha_256 = VerifyConfig.create(IVerify.VerifyType.SHA.setSubType("SHA-256"), "");
+        NetworkGuard networkGuard = NetworkGuard.createNetworkGuard(this);
+        Log.d(TAG, "submitDownloadTask: networkGuard " + networkGuard);
+        SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
+        Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
         AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
-                .withGuard(NetworkGuard.createNetworkGuard(this), SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath()))
+                .withGuard(networkGuard, spaceGuard)
                 /**
                  * 在主线程中，回调 监听
                  */
@@ -58,28 +67,63 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                 /**
                  * 添加下载完成后，对文件的校验，支持 md5 crc32 sha 序列
                  */
-                .withVerifyConfig(md5, crc32, sha_1, sha_256);
+                .withVerifyConfig(mock.configs);
 
+        DownloadManager.getInstance().submit(singleThreadTask);
+    }
 
-        /**
-         * 使用retry task ，可以增加重试机制，retry config使用，详见相关类的注释
-         * 下面代码 task 如果不成功会 重试 5 次, -1 表示无限次数
-         */
-        RetryTask retryTask = new RetryTask(singleThreadTask, RetryConfig.create().retry(5));
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        /**
-         * 当前下载任务 立即执行
-         */
-        DownloadManager.getInstance().submit(retryTask);
-        /**
-         * 按任务提交顺序，先后执行
-         */
-//        DownloadManager.getInstance().submitNow(singleThreadTask);
+        SpaceGuard.initFromSystem(this, null);
 
+        Gson gson = new Gson();
+        BufferedReader bufferedReader = null;
+        StringBuilder sbd = new StringBuilder();
+        try {
+            bufferedReader = new BufferedReader(new InputStreamReader(getAssets().open("download_mock.json")));
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                sbd.append(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (bufferedReader != null) {
+                try {
+                    bufferedReader.close();
+                } catch (IOException e) {
+                }
+            }
+        }
+
+        if (TextUtils.isEmpty(sbd.toString())) {
+            Log.w(TAG, "onCreate: mock data is empty");
+            return;
+        }
+
+        DownloadMock[] downloadMocks = gson.fromJson(sbd.toString(), DownloadMock[].class);
+        Log.d(TAG, "onCreate: downloadMocks length = " + downloadMocks.length);
+
+        for (DownloadMock mock : downloadMocks) {
+            fillDownloadItem(mock.item);
+            if (mock.verifys != null) {
+                VerifyConfig[] configs = new VerifyConfig[mock.verifys.length];
+                for (int i = 0; i < configs.length; ++i) {
+                    configs[i] = mock.verifys[i].toVerifyConfig();
+                }
+                mock.configs = configs;
+            }
+
+            submitDownloadTask(mock);
+        }
     }
 
     /**
      * 下载任务准备开始
+     *
      * @param item
      */
     @Override
@@ -89,25 +133,28 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
 
     /**
      * 下载完成
+     *
      * @param item
      */
     @Override
     public void onCompleted(DownloadItem item) {
-
+        Log.d(TAG, "onCompleted: " + item.getFilename());
     }
 
     /**
      * 进度更新， 0 <= percent <= 100
+     *
      * @param item
      * @param percent
      */
     @Override
     public void onUpdateProgress(DownloadItem item, int percent) {
-
+//        Log.d(TAG, "onUpdateProgress: " + item.getFilename() + "->" + percent);
     }
 
     /**
      * 暂停回调
+     *
      * @param item
      * @param percent
      */
@@ -118,6 +165,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
 
     /**
      * 错误回调
+     *
      * @param item
      * @param error
      */
@@ -128,6 +176,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
 
     /**
      * 主动停止的回调
+     *
      * @param item
      * @param reason
      * @param message
@@ -135,5 +184,33 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
     @Override
     public void onStop(DownloadItem item, int reason, String message) {
 
+    }
+}
+
+class DownloadMock {
+    DownloadItem item;
+    VerifyConfigS[] verifys;
+    VerifyConfig[] configs;
+}
+
+class VerifyConfigS {
+    String type;
+    String value;
+
+    VerifyConfig toVerifyConfig() {
+        String t = type.trim().toUpperCase();
+        if (t.equals("MD5")) {
+            return VerifyConfig.create(IVerify.VerifyType.MD5, value);
+        }
+
+        if (t.equals("CRC32")) {
+            return VerifyConfig.create(IVerify.VerifyType.CRC32, value);
+        }
+
+        if (t.startsWith("SHA")) {
+            return VerifyConfig.create(IVerify.VerifyType.SHA.setSubType(t), value);
+        }
+
+        throw new IllegalArgumentException("DO NOT support this algorithm -> " + type);
     }
 }

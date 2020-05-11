@@ -47,10 +47,10 @@ public final class SpaceGuard extends SystemGuard {
         SpaceGuard spaceGuard = cacheGuard.getSpaceGuard(dir);
         if (spaceGuard == null) {
             spaceGuard = new SpaceGuard(context, dir);
+            spaceGuard.guard();
             Log.d(TAG, "createSpaceGuard: dir = " + dir);
             cacheGuard.putSpaceGuard(dir, spaceGuard);
         }
-        spaceGuard.guard();
 
         return spaceGuard;
     }
@@ -138,7 +138,7 @@ public final class SpaceGuard extends SystemGuard {
         long tfsize = freeSize.addAndGet(-totalSize.addAndGet(-size));
 
         if (tfsize > RED_SIZE) {
-            Log.d(TAG, "revertSize: enough size");
+            Log.d(TAG, "revertSize: enough size, dir = " + guardDir);
             notifyEvent(Type.SPACE, new SpaceGuardEvent(SpaceGuardEvent.EVENT_ENOUGH, "enough size", guardDir, tfsize));
         }
 
@@ -147,13 +147,13 @@ public final class SpaceGuard extends SystemGuard {
 
     public boolean checkMaybeFreeSpace(long tfsize) {
         if (tfsize < RED_SIZE) {
-            Log.e(TAG, "checkMaybeFreeSpace: FAILED, space not enough! > " + tfsize);
+            Log.e(TAG, "checkMaybeFreeSpace: FAILED, space not enough! > " + tfsize + ", dir = " + guardDir);
             notifyEvent(Type.SPACE, new SpaceGuardEvent(SpaceGuardEvent.EVENT_ERROR, "space not enough!", guardDir));
             return false;
         }
 
         if (tfsize < WARNING_SIZE) {
-            Log.w(TAG, "checkMaybeFreeSpace: WARNING, space is will exhaust! > " + tfsize);
+            Log.w(TAG, "checkMaybeFreeSpace: WARNING, space is will exhaust! > " + tfsize + ", dir = " + guardDir);
             notifyEvent(Type.SPACE, new SpaceGuardEvent(SpaceGuardEvent.EVENT_WARNING, "space is will exhaust!", guardDir));
         }
         return true;
@@ -409,16 +409,16 @@ final class MountDir {
 
         String maxPath = null;
         for (String dir : dirCache) {
-            if (!path.startsWith(dir + "/")) {
+            if (!path.startsWith(dir + File.separator)) {
                 continue;
             }
 
             if (TextUtils.isEmpty(maxPath)) {
-                maxPath = path;
+                maxPath = dir;
             }
 
-            if (path.length() > maxPath.length()) {
-                maxPath = path;
+            if (dir.length() > maxPath.length()) {
+                maxPath = dir;
             }
         }
 
@@ -428,7 +428,7 @@ final class MountDir {
 
         Log.w(TAG, "path2MountDir: failed, use default /data");
 
-        return "/data";
+        return File.separator + "data";
     }
 
 

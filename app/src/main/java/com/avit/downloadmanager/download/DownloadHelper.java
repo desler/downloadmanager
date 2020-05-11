@@ -119,6 +119,9 @@ public final class DownloadHelper {
      * @return
      */
     public long resumeBreakPoint(String filePath){
+
+        Log.d(TAG, "resumeBreakPoint: ");
+        
         File ftmp = new File(filePath + ".tmp");
 
         if (ftmp.exists()) {
