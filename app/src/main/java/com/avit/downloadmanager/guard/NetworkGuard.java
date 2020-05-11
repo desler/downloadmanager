@@ -13,6 +13,7 @@ public final class NetworkGuard extends SystemGuard{
 
         if (sInstance == null) {
             sInstance = new NetworkGuard(context);
+            sInstance.guard();
         }
 
         return sInstance;

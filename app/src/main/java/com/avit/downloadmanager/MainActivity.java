@@ -1,8 +1,8 @@
 package com.avit.downloadmanager;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.os.Bundle;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.error.Error;
@@ -22,6 +22,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        SpaceGuard.initFromSystem(this, null);
 
         /**
          * 创建 下载需要使用的 数据单元
@@ -72,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         /**
          * 按任务提交顺序，先后执行
          */
-        DownloadManager.getInstance().submitNow(singleThreadTask);
+//        DownloadManager.getInstance().submitNow(singleThreadTask);
 
     }
 

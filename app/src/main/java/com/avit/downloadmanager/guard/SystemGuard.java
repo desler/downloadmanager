@@ -19,11 +19,11 @@ public abstract class SystemGuard implements IGuard {
 
     @Override
     public IGuard enable() {
-        return null;
+        return this;
     }
 
     @Override
     public IGuard disable() {
-        return null;
+        return this;
     }
 }

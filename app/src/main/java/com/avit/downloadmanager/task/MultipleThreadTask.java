@@ -101,9 +101,13 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             Log.e(TAG, "onStart: ", e);
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), e.getMessage(), e));
             return false;
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "onStart: ", e);
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(), e.getMessage(), e));
         } finally {
             Log.d(TAG, "onStart: downloadHelper release");
-            downloadHelper.release();
+            if (downloadHelper != null)
+                downloadHelper.release();
         }
 
         Log.d(TAG, "onStart: file size = " + fileLength);

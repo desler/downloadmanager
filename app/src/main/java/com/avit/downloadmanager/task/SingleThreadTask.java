@@ -67,8 +67,18 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
 
         } catch (IOException e) {
             Log.e(TAG, "onStart: ", e);
-            downloadHelper.release();
+
+            if (downloadHelper != null)
+                downloadHelper.release();
+
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), e.getMessage(), e));
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "onStart: ", e);
+
+            if (downloadHelper != null)
+                downloadHelper.release();
+
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(), e.getMessage(), e));
         }
 
         return false;
@@ -104,9 +114,9 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
         } catch (IOException e) {
             Log.e(TAG, "onDownload: ", e);
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
-        } catch (TaskException e){
+        } catch (TaskException e) {
             taskListener.onStop(downloadItem, 0, e.getMessage());
-        }finally {
+        } finally {
             Log.d(TAG, "onDownload: always release");
             downloadHelper.release();
         }
@@ -132,9 +142,9 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
         dlConfig.written = length;
         taskListener.onUpdateProgress(downloadItem, (int) (length * 1.0f / fileLength * 100));
 
-        while (getState() == State.PAUSE){
+        while (getState() == State.PAUSE) {
             Log.d(TAG, "onProgress: state = " + getState().name());
-            synchronized (stateWait){
+            synchronized (stateWait) {
                 try {
                     stateWait.wait();
                 } catch (InterruptedException e) {
@@ -143,7 +153,7 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
             }
         }
 
-        if (getState() == State.RELEASE){
+        if (getState() == State.RELEASE) {
             Log.w(TAG, "onProgress: state = " + getState().name());
             throw new TaskException("task already release");
         }

@@ -41,23 +41,23 @@ public final class Error implements Serializable {
             return Type.ERROR_NONE;
         }
 
-        if (what >= Type.ERROR_SYSTEM.value) {
+        if (what > Type.ERROR_SYSTEM.value) {
             return Type.ERROR_UNKNOWN;
         }
 
-        if (what >= Type.ERROR_FILE.value) {
+        if (what > Type.ERROR_FILE.value) {
             return Type.ERROR_SYSTEM;
         }
 
-        if (what >= Type.ERROR_DATA.value) {
+        if (what > Type.ERROR_DATA.value) {
             return Type.ERROR_FILE;
         }
 
-        if (what >= Type.ERROR_NETWORK.value) {
+        if (what > Type.ERROR_NETWORK.value) {
             return Type.ERROR_DATA;
         }
 
-        if (what >= Type.ERROR_UNDEFINED.value()) {
+        if (what > Type.ERROR_UNDEFINED.value()) {
             return Type.ERROR_NETWORK;
         }
 
