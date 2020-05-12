@@ -142,8 +142,14 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
 
         Log.d(TAG, "onStart: thread num = " + count);
         dlTempConfigs = new DLTempConfig[count];
-        DLTempConfig tempConfig = createDLTempConfig(count - 1, modSize);
-        if (tempConfig.end != fileLength) {
+        /**
+         * http range 的范围是 从 0 开始的 即  0-1 表示两个字节，
+         * ①，因此range中，计算范围时，需要在长度基础上 -1，
+         * ②，最后一个 下载单元，不 减1，之所以不会出错，是因为文件只有这么长，因此返回了实际的长度，
+         * 但实际上之前的计算方式是错的
+         */
+        DLTempConfig tempConfig = createDLTempConfig(count - 1, modSize - 1);
+        if (tempConfig.end + 1 != fileLength) {
             Log.e(TAG, "onStart: calculate error");
             return false;
         }
@@ -160,13 +166,13 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         return true;
     }
 
-    private DLTempConfig createDLTempConfig(int index, long length) {
+    private DLTempConfig createDLTempConfig(int index, long span) {
 
         DLTempConfig dlTempConfig = new DLTempConfig();
         dlTempConfig.key = downloadItem.getKey();
 
         dlTempConfig.start = index * unitSize;
-        dlTempConfig.end = dlTempConfig.start + length;
+        dlTempConfig.end = dlTempConfig.start + span;
 
         dlTempConfig.filePath = String.format(partPathFormat, downloadItem.getSavePath(), downloadItem.getFilename(), index);
         dlTempConfig.seq = index;
@@ -492,7 +498,18 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         }
         downloadHelper.withRange(start, dlConfig.end).created();
 
-        Log.d(TAG, tn + " call: remain file length = " + downloadHelper.getContentLength());
+        long contentLength = downloadHelper.getContentLength();
+        Log.d(TAG, tn + " call: remain file length = " + contentLength);
+
+        long range = dlConfig.end - start;
+        Log.d(TAG, tn + " call: range = " + range);
+
+        /**
+         * 为什么要加 +1，可以查看 创建 config 的注释，range 的范围 是从 0 开始的，且头尾包含。
+         */
+        if (contentLength != range + 1){
+            throw new IOException("do not support Rang");
+        }
 
         long fileLength = dlConfig.end - start;
         /**
