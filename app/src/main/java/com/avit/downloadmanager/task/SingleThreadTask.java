@@ -70,6 +70,7 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
 
             if (dlConfig == null) {
                 dlConfig = createDLTempConfig(startPosition, fileLength);
+                dlConfig.written = startPosition;
             }
 
             taskListener.onStart(downloadItem);
@@ -143,10 +144,16 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
         downloadHelper.release();
     }
 
+    private int prePercent;
     @Override
     public void onProgress(String dlPath, String filePath, int length) {
         dlConfig.written = length;
-        taskListener.onUpdateProgress(downloadItem, (int) (length * 1.0f / fileLength * 100));
+
+        int percent = (int) (length * 1.0f / fileLength * 100);
+        if (percent != prePercent) {
+            taskListener.onUpdateProgress(downloadItem, percent);
+            prePercent = percent;
+        }
 
         while (getState() == State.PAUSE) {
             Log.d(TAG, "onProgress: state = " + getState().name());

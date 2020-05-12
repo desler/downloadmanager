@@ -107,6 +107,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "onStart: ", e);
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(), e.getMessage(), e));
+            return false;
         } finally {
             Log.d(TAG, "onStart: downloadHelper release");
             if (downloadHelper != null)
@@ -363,10 +364,16 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         return false;
     }
 
+    private int prePercent;
     @Override
     public void onUpdate(DLTempConfig dlTempConfig, long size) {
 //        Log.d(TAG, "onUpdate: " + dlTempConfig);
-        taskListener.onUpdateProgress(getDownloadItem(), (int) (calculateProgress() * 100));
+
+        int percent = (int)(calculateProgress() * 100);
+        if (percent != prePercent) {
+            taskListener.onUpdateProgress(getDownloadItem(), percent);
+            prePercent = percent;
+        }
 
         while (getState() == State.PAUSE) {
             Log.d(TAG, "onUpdate: state = " + getState().name());
@@ -476,6 +483,7 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         if (written > 0) {
             Log.w(TAG, tn + " call: resume break point written length = " + written);
             start += written;
+            dlConfig.written = written;
         }
         downloadHelper.withRange(start, dlConfig.end).created();
 

@@ -19,7 +19,7 @@ public final class DLTempConfig {
     public long end;
 
     /**
-     * already write
+     * current file already written bytes
      */
     public long written;
 
