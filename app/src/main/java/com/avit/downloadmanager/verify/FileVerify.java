@@ -62,7 +62,7 @@ public final class FileVerify extends AbsVerify<File> {
                 crc32.update(buffer, 0, length);
             }
 
-            String sum = String.valueOf(crc32.getValue());
+            String sum = Long.toHexString(crc32.getValue());
             Log.d(TAG, "isValidCRC32: " + sum);
 
             return crc.equalsIgnoreCase(sum);

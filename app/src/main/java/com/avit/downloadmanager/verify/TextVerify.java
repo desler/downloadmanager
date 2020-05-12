@@ -33,7 +33,7 @@ public final class TextVerify extends AbsVerify<String> {
         try {
             crc32.update(crc.getBytes("utf-8"));
 
-            String sum = String.valueOf(crc32.getValue());
+            String sum = Long.toHexString(crc32.getValue());
             Log.d(TAG, "isValidCRC32: " + sum);
 
             return crc.equalsIgnoreCase(sum);

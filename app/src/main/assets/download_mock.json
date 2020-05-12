@@ -10,6 +10,10 @@
         "value": "e4c150ffade514f419485db2232c54ff"
       },
       {
+        "type": "crc32",
+        "value": "841df0c6"
+      },
+      {
         "type": "sha-512",
         "value": "81d54caa1d39b0d0b66e7d58766a783df45478e4b2848c3aa0efc50a60d23d7efa6eb7a222d2b094850f883922ab77f08af204e319ab111768719408d4819b87"
       }
@@ -26,6 +30,10 @@
         "value": "088d20bfe8bbfc68cefa40a0ae29d236"
       },
       {
+        "type": "crc32",
+        "value": "d7b73a1e"
+      },
+      {
         "type": "sha-512",
         "value": "54807cbda0eb41d2bf859f501194b5dcb13661c676904dd9bd290c41973e1610ef25a079c5beb066cde6b7623f376e26e4e0e952507a1ff73eae3c2df8805859"
       }
@@ -40,6 +48,10 @@
       {
         "type": "md5",
         "value": "04c995a0752c7f9e05012eacaf1b5052"
+      },
+      {
+        "type": "crc32",
+        "value": "bcbfb660"
       },
       {
         "type": "sha-512",
