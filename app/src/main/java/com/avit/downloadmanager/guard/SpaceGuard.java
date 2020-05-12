@@ -47,7 +47,7 @@ public final class SpaceGuard extends SystemGuard {
         SpaceGuard spaceGuard = cacheGuard.getSpaceGuard(dir);
         if (spaceGuard == null) {
             spaceGuard = new SpaceGuard(context, dir);
-            spaceGuard.guard();
+//            spaceGuard.guard();
             Log.d(TAG, "createSpaceGuard: dir = " + dir);
             cacheGuard.putSpaceGuard(dir, spaceGuard);
         }
@@ -123,18 +123,17 @@ public final class SpaceGuard extends SystemGuard {
 
     public boolean occupySize(long size) {
 
-        long tfsize = freeSize.addAndGet(-totalSize.addAndGet(-size));
+        long t = totalSize.get() + size;
+        long tfsize = freeSize.get() - t;
 
         if (!checkMaybeFreeSpace(tfsize))
             return false;
 
-        totalSize.addAndGet(size);
-
+        freeSize.addAndGet(-totalSize.addAndGet(size));
         return true;
     }
 
     public long revertSize(long size) {
-
         long tfsize = freeSize.addAndGet(-totalSize.addAndGet(-size));
 
         if (tfsize > RED_SIZE) {
@@ -160,13 +159,19 @@ public final class SpaceGuard extends SystemGuard {
     }
 
     @Override
-    public void addGuardListener(IGuardListener guardListener) {
-        guardHelper.addSpaceGuardListener(guardDir, guardListener);
+    public int addGuardListener(IGuardListener guardListener) {
+        enable();
+        return guardHelper.addSpaceGuardListener(guardDir, guardListener);
     }
 
     @Override
-    public void removeGuardListener(IGuardListener guardListener) {
-        guardHelper.removeSpaceGuardListener(guardDir, guardListener);
+    public int removeGuardListener(IGuardListener guardListener) {
+        int size = guardHelper.removeSpaceGuardListener(guardDir, guardListener);
+        Log.d(TAG, "removeGuardListener: " + size);
+        if (size == 0){
+            disable();
+        }
+        return size;
     }
 
     @Override
@@ -178,9 +183,14 @@ public final class SpaceGuard extends SystemGuard {
     @Override
     public synchronized IGuard disable() {
 
-        guardTask.disable();
+        Log.w(TAG, "disable: " + guardDir);
 
-        futureTask.cancel(true);
+        if (guardTask != null) {
+            guardTask.disable();
+        }
+        if (futureTask != null) {
+            futureTask.cancel(true);
+        }
         futureTask = null;
 
         return super.disable();
@@ -189,10 +199,13 @@ public final class SpaceGuard extends SystemGuard {
     @Override
     public synchronized IGuard enable() {
 
-        guardTask.enable();
+        Log.w(TAG, "enable: " + guardDir);
 
-        if (futureTask == null) {
-            futureTask = scheduled.scheduleWithFixedDelay(guardTask, 0, CHECK_INTERVAL, TimeUnit.SECONDS);
+        if (guardTask != null) {
+            guardTask.enable();
+            if (futureTask == null) {
+                futureTask = scheduled.scheduleWithFixedDelay(guardTask, 0, CHECK_INTERVAL, TimeUnit.SECONDS);
+            }
         }
 
         return super.enable();

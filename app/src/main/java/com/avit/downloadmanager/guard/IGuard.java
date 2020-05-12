@@ -3,9 +3,9 @@ package com.avit.downloadmanager.guard;
 public interface IGuard {
     void notifyEvent(Type type, GuardEvent event);
 
-    void addGuardListener(IGuardListener guardListener);
+    int addGuardListener(IGuardListener guardListener);
 
-    void removeGuardListener(IGuardListener guardListener);
+    int removeGuardListener(IGuardListener guardListener);
 
     void guard();
 

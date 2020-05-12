@@ -25,7 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 
-public final class MultipleThreadTask extends AbstactTask implements SingleTask.LoadListener {
+public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> implements SingleTask.LoadListener {
 
     /**
      * 最多 4 个线程
@@ -67,7 +67,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
     });
     private final Object stateWait = new Object();
 
-    protected MultipleThreadTask(DownloadItem downloadItem) {
+    public MultipleThreadTask(DownloadItem downloadItem) {
         super(downloadItem);
         maxThreads = MAX_THREADS;
         unitSize = UNIT_SIZE;
@@ -97,6 +97,9 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
                 Log.e(TAG, "onStart: responseCode = " + responseCode);
                 return false;
             }
+
+            Log.d(TAG, "onStart: fileLength = " + size2String(fileLength) + ", file = " + downloadItem.getFilename());
+
         } catch (IOException e) {
             Log.e(TAG, "onStart: ", e);
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), e.getMessage(), e));
@@ -210,7 +213,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
         for (int i = 0; i < count; ++i) {
 
             DLTempConfig tempConfig = dlTempConfigs[i];
-            Log.d(TAG, String.format(Locale.ENGLISH, "onDownload: file span[%ld, %ld]", tempConfig.start, tempConfig.end));
+            Log.d(TAG, String.format(Locale.ENGLISH, "onDownload: file span[%d, %d]", tempConfig.start, tempConfig.end));
 
             singleTasks[i] = createSingleTask(tempConfig).withSpaceGuard(spaceGuard);
             futures[i] = executorService.submit(singleTasks[i]);
@@ -247,7 +250,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
         File[] files = new File[count];
         for (int i = 0; i < count; ++i) {
             String partFile = dlTempConfigs[i].filePath;
-            Log.d(TAG, "onDownload: merge files " + partFile);
+//            Log.d(TAG, "onDownload: merge files " + partFile);
             files[i] = new File(partFile);
         }
 
@@ -325,6 +328,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             fileOutputStream.close();
 
             file.renameTo(new File(filePath));
+            Log.d(TAG, "mergeFiles: rename to " + filePath);
 
             /**
              * 删除多线程下载时，各线程 生成的 part.x 文件
@@ -361,7 +365,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
 
     @Override
     public void onUpdate(DLTempConfig dlTempConfig, long size) {
-        Log.d(TAG, "onUpdate: " + dlTempConfig);
+//        Log.d(TAG, "onUpdate: " + dlTempConfig);
         taskListener.onUpdateProgress(getDownloadItem(), (int) (calculateProgress() * 100));
 
         while (getState() == State.PAUSE) {
@@ -388,7 +392,7 @@ public final class MultipleThreadTask extends AbstactTask implements SingleTask.
             alSize += config.written;
         }
 
-        Log.d(TAG, String.format("calculateProgress: [%ld, %ld]", alSize, fileLength));
+//        Log.d(TAG, String.format("calculateProgress: [%d, %d]", alSize, fileLength));
 
         return alSize * 1.0f / fileLength;
     }
@@ -438,7 +442,6 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
 
     SingleTask withDLTempConfig(DLTempConfig config) {
         this.dlConfig = config;
-        this.downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath());
         return this;
     }
 
@@ -464,17 +467,21 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
     @Override
     public DLTempConfig call() throws Exception {
 
-        if (downloadHelper == null) {
-            throw new IllegalStateException("DLTempConfig not set");
-        }
+        String tn = Thread.currentThread().getName();
+
+        this.downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath());
 
         long written = supportBreakpoint ? downloadHelper.resumeBreakPoint(dlConfig.filePath) : 0;
-        Log.d(TAG, "call: written length = " + written);
+        long start = dlConfig.start;
         if (written > 0) {
-            downloadHelper.withRange(dlConfig.start + written, dlConfig.end);
+            Log.d(TAG, tn + " call: resume break point written length = " + written);
+            start += written;
         }
+        downloadHelper.withRange(start, dlConfig.end).created();
 
-        long fileLength = dlConfig.end - dlConfig.start;
+        Log.d(TAG, tn + " call: file length = " + downloadHelper.getContentLength());
+
+        long fileLength = dlConfig.end - start;
         /**
          * 如果空间不够，则 等待
          */
@@ -483,7 +490,7 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
                 try {
                     waitSpace.wait();
                 } catch (Throwable e) {
-                    Log.e(TAG, "call: ", e);
+                    Log.e(TAG, tn + " call: ", e);
                 }
             }
         }
@@ -491,10 +498,10 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         try {
             downloadHelper.withProgressListener(this).retrieveFile(dlConfig.filePath);
         } catch (IOException e) {
-            Log.e(TAG, "call: ", e);
+            Log.e(TAG, tn + " call: ", e);
             loadListener.onError(dlConfig, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
         } finally {
-            Log.d(TAG, "call: always release");
+            Log.d(TAG, tn + " call: always release");
             downloadHelper.release();
         }
 

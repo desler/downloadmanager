@@ -37,7 +37,7 @@ public final class DownloadHelper {
     }
 
     public DownloadHelper withRange(long start, long end) {
-        range = String.format(Locale.ENGLISH, "bytes=%ld-%ld", start, end);
+        range = String.format(Locale.ENGLISH, "bytes=%d-%d", start, end);
         Log.d(TAG, "withRange: " + range);
         return this;
     }
@@ -120,8 +120,6 @@ public final class DownloadHelper {
      */
     public long resumeBreakPoint(String filePath){
 
-        Log.d(TAG, "resumeBreakPoint: ");
-        
         File ftmp = new File(filePath + ".tmp");
 
         if (ftmp.exists()) {

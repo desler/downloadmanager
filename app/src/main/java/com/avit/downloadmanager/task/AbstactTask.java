@@ -22,7 +22,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class AbstactTask implements ITask {
+public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
     protected final String TAG;
 
@@ -53,7 +53,7 @@ public abstract class AbstactTask implements ITask {
         this.state = State.NONE;
     }
 
-    public AbstactTask withListener(TaskListener listener) {
+    public TASK withListener(TaskListener listener) {
 
         if (this.taskListener == EventDispatcher.DUMMY) {
             /**
@@ -68,28 +68,29 @@ public abstract class AbstactTask implements ITask {
         }
 
         ((EventDispatcher) this.taskListener).taskListener = listener;
-        return this;
+        return (TASK) this;
     }
 
-    public AbstactTask withVerifyConfig(VerifyConfig... verifyConfigs) {
+    public TASK withVerifyConfig(VerifyConfig... verifyConfigs) {
         if (verifyConfigs == null || verifyConfigs.length <= 0)
-            return this;
+            return (TASK) this;
 
         for (VerifyConfig verifyConfig : verifyConfigs) {
             this.verifyConfigs.add(verifyConfig);
         }
-        return this;
+        return (TASK) this;
     }
 
-    public AbstactTask withGuard(SystemGuard... systemGuards) {
+    public TASK withGuard(SystemGuard... systemGuards) {
         if (systemGuards == null || systemGuards.length == 0) {
             Log.w(TAG, "withGuard: is nothing");
-            return this;
+            return (TASK) this;
         }
 
         for (SystemGuard guard : systemGuards) {
             guard.addGuardListener(this);
             this.systemGuards.add(guard);
+            guard.guard();
 
             if (guard instanceof SpaceGuard){
                 this.spaceGuard = (SpaceGuard) guard;
@@ -97,12 +98,12 @@ public abstract class AbstactTask implements ITask {
             }
         }
 
-        return this;
+        return (TASK) this;
     }
 
-    public AbstactTask supportBreakpoint() {
+    public TASK supportBreakpoint() {
         supportBreakpoint = true;
-        return this;
+        return (TASK) this;
     }
 
     /**
@@ -110,9 +111,9 @@ public abstract class AbstactTask implements ITask {
      *
      * @return
      */
-    public AbstactTask callbackOnMainThread() {
+    public TASK callbackOnMainThread() {
         callbackOnMainThread = true;
-        return this;
+        return (TASK) this;
     }
 
     public DownloadItem getDownloadItem() {
@@ -140,6 +141,7 @@ public abstract class AbstactTask implements ITask {
         }
 
         if (isValidState() && !onVerify()) {
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(),"check [MD5, e4c150ffade514f419485db2232c54ff], invalid"));
             return Boolean.FALSE;
         }
 
@@ -147,6 +149,8 @@ public abstract class AbstactTask implements ITask {
         if (taskListener != null) {
             taskListener.onCompleted(downloadItem);
         }
+
+        release();
 
         return Boolean.TRUE;
     }
@@ -228,14 +232,17 @@ public abstract class AbstactTask implements ITask {
         release();
     }
 
-    @Override
-    public void release() {
-        this.state = State.RELEASE;
-
+    private void releaseGuard(){
         for (SystemGuard guard : systemGuards) {
             guard.removeGuardListener(this);
         }
         systemGuards.clear();
+    }
+
+    @Override
+    public void release() {
+        this.state = State.RELEASE;
+        releaseGuard();
     }
 
     private boolean isValidState() {

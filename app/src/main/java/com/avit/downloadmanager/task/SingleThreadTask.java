@@ -13,7 +13,7 @@ import com.avit.downloadmanager.guard.SpaceGuardEvent;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 
-public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnProgressListener {
+public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements DownloadHelper.OnProgressListener {
 
     private final static String pathFormat = "%s/%s";
 
@@ -91,8 +91,8 @@ public class SingleThreadTask extends AbstactTask implements DownloadHelper.OnPr
          * 检测是否需要 断点续写
          */
         long writtenLength = supportBreakpoint ? downloadHelper.resumeBreakPoint(dlConfig.filePath) : 0;
-        Log.d(TAG, "onDownload: written length = " + writtenLength);
         if (writtenLength > 0) {
+            Log.d(TAG, "onDownload: resume break point written length = " + writtenLength);
             downloadHelper.withRange(writtenLength, fileLength);
         }
 

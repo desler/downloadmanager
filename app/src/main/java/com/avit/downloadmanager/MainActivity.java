@@ -1,5 +1,7 @@
 package com.avit.downloadmanager;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -11,20 +13,16 @@ import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.task.AbstactTask;
-import com.avit.downloadmanager.task.SingleThreadTask;
+import com.avit.downloadmanager.task.MultipleThreadTask;
 import com.avit.downloadmanager.task.TaskListener;
-import com.avit.downloadmanager.task.retry.RetryConfig;
-import com.avit.downloadmanager.task.retry.RetryTask;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyConfig;
 import com.google.gson.Gson;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.SortedMap;
 
 public class MainActivity extends AppCompatActivity implements TaskListener {
 
@@ -47,7 +45,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
-        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
+        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -118,6 +116,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
             }
 
             submitDownloadTask(mock);
+//            break;
         }
     }
 
@@ -139,6 +138,16 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
     @Override
     public void onCompleted(DownloadItem item) {
         Log.d(TAG, "onCompleted: " + item.getFilename());
+
+        if (item.getFilename().toLowerCase().endsWith(".apk")) {
+            Log.d(TAG, "onCompleted: will install " + item.getFilename());
+            File apkFile = new File(item.getSavePath() + File.separator + item.getFilename());
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+            startActivity(intent);
+        }
+
     }
 
     /**
