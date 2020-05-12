@@ -19,6 +19,7 @@ import com.avit.downloadmanager.task.SingleThreadTask;
 import com.avit.downloadmanager.task.TaskListener;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyConfig;
+import com.avit.downloadmanager.watch.APKInstallWatch;
 import com.google.gson.Gson;
 
 import java.io.BufferedReader;
@@ -47,8 +48,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
-        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
-//        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
+//        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
+        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -107,15 +108,17 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         return downloadMocks;
     }
 
+    private APKInstallWatch apkInstallWatch;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        apkInstallWatch = new APKInstallWatch(this).watch();
+
         SpaceGuard.initFromSystem(this, null);
 
         DownloadMock[] downloadMocks = initMockData();
-
         for (DownloadMock mock : downloadMocks) {
             fillDownloadItem(mock.item);
             if (mock.verifys != null) {
@@ -128,6 +131,12 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
 
             submitDownloadTask(mock);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        apkInstallWatch.release();
+        super.onDestroy();
     }
 
     /**
@@ -156,6 +165,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
             startActivity(intent);
+
+            apkInstallWatch.addApk(apkFile.getPath());
         }
 
     }
