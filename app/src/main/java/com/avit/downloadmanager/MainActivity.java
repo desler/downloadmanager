@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        apkInstallWatch = new APKInstallWatch(this).watch();
+        apkInstallWatch = new APKInstallWatch(this);
 
         SpaceGuard.initFromSystem(this, null);
 
