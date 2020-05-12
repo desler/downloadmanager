@@ -13,10 +13,8 @@ import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.task.AbstactTask;
-import com.avit.downloadmanager.task.MultipleThreadTask;
 import com.avit.downloadmanager.task.SingleThreadTask;
 import com.avit.downloadmanager.task.TaskListener;
-import com.avit.downloadmanager.task.retry.RetryTask;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyConfig;
 import com.google.gson.Gson;
@@ -47,7 +45,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
-        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
+//        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
+        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -69,17 +68,12 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                  */
                 .withVerifyConfig(mock.configs);
 
-//        DownloadManager.getInstance().submit(singleThreadTask);
-        DownloadManager.getInstance().submitNow(new RetryTask(singleThreadTask));
+        DownloadManager.getInstance().submit(singleThreadTask);
+//        DownloadManager.getInstance().submitNow(singleThreadTask);
+//        DownloadManager.getInstance().submitNow(new RetryTask(singleThreadTask));
     }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        SpaceGuard.initFromSystem(this, null);
-
+    private DownloadMock[] initMockData() {
         Gson gson = new Gson();
         BufferedReader bufferedReader = null;
         StringBuilder sbd = new StringBuilder();
@@ -102,11 +96,23 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
 
         if (TextUtils.isEmpty(sbd.toString())) {
             Log.w(TAG, "onCreate: mock data is empty");
-            return;
+            return new DownloadMock[0];
         }
 
         DownloadMock[] downloadMocks = gson.fromJson(sbd.toString(), DownloadMock[].class);
         Log.d(TAG, "onCreate: downloadMocks length = " + downloadMocks.length);
+
+        return downloadMocks;
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        SpaceGuard.initFromSystem(this, null);
+
+        DownloadMock[] downloadMocks = initMockData();
 
         for (DownloadMock mock : downloadMocks) {
             fillDownloadItem(mock.item);
@@ -119,7 +125,6 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
             }
 
             submitDownloadTask(mock);
-//            break;
         }
     }
 
