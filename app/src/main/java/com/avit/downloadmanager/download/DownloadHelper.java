@@ -111,7 +111,9 @@ public final class DownloadHelper {
 
         boolean isRename = tmp.renameTo(file);
         if (!isRename) {
-            throw new IOException(tmp.getPath() + " rename FAILED");
+            throw new IOException(tmp.getName() + " rename FAILED");
+        } else {
+            Log.d(TAG, "retrieveFile: rename to " + file.getName());
         }
 
         return tmp;

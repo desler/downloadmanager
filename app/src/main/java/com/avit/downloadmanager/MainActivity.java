@@ -3,6 +3,7 @@ package com.avit.downloadmanager;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -13,6 +14,7 @@ import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.task.AbstactTask;
+import com.avit.downloadmanager.task.MultipleThreadTask;
 import com.avit.downloadmanager.task.SingleThreadTask;
 import com.avit.downloadmanager.task.TaskListener;
 import com.avit.downloadmanager.verify.IVerify;
@@ -30,7 +32,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
 
     private void fillDownloadItem(DownloadItem item) {
         String filename = item.getDlPath().substring(item.getDlPath().lastIndexOf("/") + 1);
-        item.withSavePath(this.getFilesDir().getPath())
+        item.withSavePath(Environment.getExternalStorageDirectory().getPath())
                 .withFilename(filename);
     }
 
@@ -45,8 +47,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
-//        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
-        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
+        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
+//        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */

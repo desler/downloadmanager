@@ -25,6 +25,7 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
 
     public SingleThreadTask(DownloadItem downloadItem) {
         super(downloadItem);
+        TAG = "SingleThreadTask";
     }
 
     private DLTempConfig createDLTempConfig(long start, long length) {

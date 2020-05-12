@@ -14,6 +14,7 @@ public final class FileVerify extends AbsVerify<File> {
 
     FileVerify(File file) {
         super(file);
+        TAG  = "FileVerify";
     }
 
     private boolean isValidDigest(MessageDigest digest, String verify) {

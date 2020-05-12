@@ -69,6 +69,8 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
 
     public MultipleThreadTask(DownloadItem downloadItem) {
         super(downloadItem);
+        TAG = "MultipleThreadTask";
+
         maxThreads = MAX_THREADS;
         unitSize = UNIT_SIZE;
     }
@@ -313,7 +315,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
              */
             byte buffer[] = new byte[1 * 1024 * 1024];
             for (File f : files) {
-                Log.d(TAG, "mergeFiles: " + f.getPath());
+                Log.d(TAG, "mergeFiles: " + f.getName());
 
                 int count = 0;
                 fileInputStream = new FileInputStream(f);
@@ -322,20 +324,23 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
                 }
                 fileOutputStream.flush();
                 fileInputStream.close();
-                Log.d(TAG, "mergeFiles: finish > " + f.getPath());
+                Log.d(TAG, "mergeFiles: finish ");
             }
 
             fileOutputStream.flush();
             fileOutputStream.close();
 
-            file.renameTo(new File(filePath));
-            Log.d(TAG, "mergeFiles: rename to " + filePath);
-
+            boolean isRename = file.renameTo(new File(filePath));
+            if (!isRename) {
+                throw new IOException(file.getName() + " rename FAILED");
+            } else {
+                Log.d(TAG, "mergeFiles: rename to " + downloadItem.getFilename());
+            }
             /**
              * 删除多线程下载时，各线程 生成的 part.x 文件
              */
             for (File f : files) {
-                Log.d(TAG, "mergeFiles: delete part file " + f.getPath() + " > " + f.delete());
+                Log.d(TAG, "mergeFiles: delete part file " + f.getName() + " > " + f.delete());
             }
 
             Log.d(TAG, "mergeFiles: cost = " + (System.currentTimeMillis() - begin));

@@ -21,7 +21,6 @@ public abstract class AbsVerify<CONTENT> implements IVerify{
     private CONTENT content;
 
     public AbsVerify(CONTENT content) {
-        TAG = getClass().getSimpleName();
         this.content = content;
     }
 

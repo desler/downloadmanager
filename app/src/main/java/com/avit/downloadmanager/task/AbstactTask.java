@@ -24,7 +24,7 @@ import java.util.List;
 
 public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
-    protected final String TAG;
+    protected String TAG = "AbstactTask";
 
     final static String pathFormat = "%s" + File.separator + "%s";
 
@@ -44,8 +44,6 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
     protected State state;
 
     public AbstactTask(DownloadItem downloadItem) {
-        TAG = getClass().getSimpleName();
-
         this.verifyConfigs = new ArrayList<>(1);
         this.systemGuards = new ArrayList<>(2);
 
@@ -142,13 +140,15 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
     @Override
     public final Boolean call() throws Exception {
 
+        Log.d(TAG, "call: save file path = " + downloadItem.getSavePath());
+
         /**
          * 如果文件已经存在，则 直接 校验 不需要 进行 实际的下载
          */
         if (!TextUtils.isEmpty(downloadItem.getFilename())) {
             String filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
             if (checkAndVerify(new File(filePath))) {
-                Log.w(TAG, "call: init check already exist > " + filePath);
+                Log.w(TAG, "call: init check already exist > " + downloadItem.getFilename());
                 if (taskListener != null) {
                     taskListener.onCompleted(downloadItem);
                 }
@@ -167,7 +167,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         String filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
 
         if (checkAndVerify(new File(filePath))) {
-            Log.w(TAG, "call: after start already exist > " + filePath);
+            Log.w(TAG, "call: after start already exist > " + downloadItem.getFilename());
             if (taskListener != null) {
                 taskListener.onCompleted(downloadItem);
             }

@@ -11,6 +11,7 @@ public final class TextVerify extends AbsVerify<String> {
 
     TextVerify(String str) {
         super(str);
+        TAG  = "TextVerify";
     }
 
     private boolean isValidDigest(MessageDigest digest, String verify) {
