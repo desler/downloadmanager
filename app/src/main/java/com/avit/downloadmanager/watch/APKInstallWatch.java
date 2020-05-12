@@ -137,6 +137,7 @@ public final class APKInstallWatch extends HandlerThread {
 
 
     private void stopWatch() {
+        Log.e(TAG, "stopWatch: ");
         if (watchFuture != null) {
             watchFuture.cancel(true);
             watchFuture = null;
