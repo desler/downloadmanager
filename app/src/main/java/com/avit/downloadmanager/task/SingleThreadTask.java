@@ -66,7 +66,7 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
                 Log.e(TAG, "onStart: responseCode = " + responseCode);
                 return false;
             }
-            Log.d(TAG, "onStart: remain fileLength = " + size2String(fileLength) + ", file = " + downloadItem.getFilename());
+            Log.d(TAG, "onStart: remain fileLength = " + fileLength + ", file = " + downloadItem.getFilename());
 
             if (dlConfig == null) {
                 dlConfig = createDLTempConfig(startPosition, fileLength);

@@ -487,7 +487,7 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         }
         downloadHelper.withRange(start, dlConfig.end).created();
 
-        Log.d(TAG, tn + " call: remain file length = " + MultipleThreadTask.size2String(downloadHelper.getContentLength()));
+        Log.d(TAG, tn + " call: remain file length = " + downloadHelper.getContentLength());
 
         long fileLength = dlConfig.end - start;
         /**

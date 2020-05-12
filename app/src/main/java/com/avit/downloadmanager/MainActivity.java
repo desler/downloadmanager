@@ -14,7 +14,9 @@ import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.task.AbstactTask;
 import com.avit.downloadmanager.task.MultipleThreadTask;
+import com.avit.downloadmanager.task.SingleThreadTask;
 import com.avit.downloadmanager.task.TaskListener;
+import com.avit.downloadmanager.task.retry.RetryTask;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyConfig;
 import com.google.gson.Gson;
@@ -67,7 +69,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                  */
                 .withVerifyConfig(mock.configs);
 
-        DownloadManager.getInstance().submit(singleThreadTask);
+//        DownloadManager.getInstance().submit(singleThreadTask);
+        DownloadManager.getInstance().submitNow(new RetryTask(singleThreadTask));
     }
 
     @Override
@@ -158,7 +161,9 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
      */
     @Override
     public void onUpdateProgress(DownloadItem item, int percent) {
-//        Log.d(TAG, "onUpdateProgress: " + item.getFilename() + "->" + percent);
+        if (percent % 5 == 0) {
+            Log.d(TAG, "onUpdateProgress: " + item.getFilename() + "->" + percent);
+        }
     }
 
     /**

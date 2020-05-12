@@ -45,6 +45,10 @@ public final class RetryTask implements ITask {
     private int retryTimes;
     private long step;
 
+    public RetryTask(ITask task){
+        this(task, RetryConfig.create());
+    }
+
     public RetryTask(ITask task, RetryConfig retryConfig) {
         this.task = task;
         this.retryConfig = retryConfig;
