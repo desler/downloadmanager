@@ -20,10 +20,18 @@ public final class DownloadManager {
         sequentialExecutor = new SequentialExecutor();
     }
 
+    /**
+     * 下载任务 立即执行
+     * @param task
+     */
     public void submitNow(ITask task){
         immediatelyExecutor.submit(task);
     }
 
+    /**
+     * 下载 任务 按顺序 逐个 执行
+     * @param task
+     */
     public void submit(ITask task){
         sequentialExecutor.submit(task);
     }
