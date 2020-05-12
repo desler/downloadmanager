@@ -37,7 +37,11 @@ public final class DownloadHelper {
     }
 
     public DownloadHelper withRange(long start, long end) {
-        range = String.format(Locale.ENGLISH, "bytes=%d-%d", start, end);
+        if (end > 0) {
+            range = String.format(Locale.ENGLISH, "bytes=%d-%d", start, end);
+        } else {
+            range = String.format(Locale.ENGLISH, "bytes=%d-", start);
+        }
         Log.d(TAG, "withRange: " + range);
         return this;
     }
@@ -85,7 +89,7 @@ public final class DownloadHelper {
         this.inputStream = httpURLConnection.getInputStream();
 
         File tmp = new File(fileFullPath + ".tmp");
-        this.outputStream = new FileOutputStream(tmp);
+        this.outputStream = new FileOutputStream(tmp, true);
 
         byte[] buffer = new byte[BUFFER_SIZE];
         int offset = 0, totalBytes = 0;
@@ -122,17 +126,9 @@ public final class DownloadHelper {
 
         File ftmp = new File(filePath + ".tmp");
 
-        if (ftmp.exists()) {
+        if (ftmp.exists() && ftmp.isFile()) {
 
-            if (!ftmp.isFile()) {
-                Log.e(TAG, "resumeBreakPoint: dir delete " + ftmp.delete());
-                return 0;
-            }
-
-            /**
-             * 防止 最终的 末端 读写出现异常，导致 数据不正确，此处 回退 512 个字节
-             */
-            long existLength = ftmp.length() - 512;
+            long existLength = ftmp.length();
 
             /**
              * 如果 大于 0 ，证明已经下载了部分数据， 支持 断点续写

@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -13,7 +14,6 @@ import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.guard.SystemGuard;
-import com.avit.downloadmanager.task.retry.RetryConfig;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyCheck;
 import com.avit.downloadmanager.verify.VerifyConfig;
@@ -25,6 +25,8 @@ import java.util.List;
 public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
     protected final String TAG;
+
+    final static String pathFormat = "%s" + File.separator + "%s";
 
     protected DownloadItem downloadItem;
     protected TaskListener taskListener;
@@ -92,7 +94,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
             this.systemGuards.add(guard);
             guard.guard();
 
-            if (guard instanceof SpaceGuard){
+            if (guard instanceof SpaceGuard) {
                 this.spaceGuard = (SpaceGuard) guard;
                 Log.d(TAG, "withGuard: add a spaceGuard = " + spaceGuard);
             }
@@ -121,36 +123,78 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
     }
 
     public TaskListener getTaskListener() {
-        return ((EventDispatcher)taskListener).taskListener;
+        return ((EventDispatcher) taskListener).taskListener;
     }
 
     public List<VerifyConfig> getVerifyConfigs() {
         return verifyConfigs;
     }
 
+    private boolean checkAndVerify(File file) {
+        if (file.exists() && file.isFile()) {
+            if (isValidState() && onVerify()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public final Boolean call() throws Exception {
+
+        /**
+         * 如果文件已经存在，则 直接 校验 不需要 进行 实际的下载
+         */
+        if (!TextUtils.isEmpty(downloadItem.getFilename())) {
+            String filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
+            if (checkAndVerify(new File(filePath))) {
+                Log.w(TAG, "call: init check already exist > " + filePath);
+                if (taskListener != null) {
+                    taskListener.onCompleted(downloadItem);
+                }
+                release();
+                return Boolean.TRUE;
+            }
+        }
 
         if (isValidState() && !onStart()) {
             return Boolean.FALSE;
         }
+
+        /**
+         * 有时候 文件名字 需要从 连接的 head 属性中获取，因此在这里做 二次校验
+         */
+        String filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
+
+        if (checkAndVerify(new File(filePath))) {
+            Log.w(TAG, "call: after start already exist > " + filePath);
+            if (taskListener != null) {
+                taskListener.onCompleted(downloadItem);
+            }
+            release();
+            return Boolean.TRUE;
+        }
+
+
         state = State.START;
 
         if (isValidState() && !onDownload()) {
             return Boolean.FALSE;
         }
 
-        if (isValidState() && !onVerify()) {
-            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(),"check [MD5, e4c150ffade514f419485db2232c54ff], invalid"));
-            return Boolean.FALSE;
-        }
+        try {
+            if (isValidState() && !onVerify()) {
+                taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(), "check verify invalid"));
+                return Boolean.FALSE;
+            }
 
-        state = State.COMPLETE;
-        if (taskListener != null) {
-            taskListener.onCompleted(downloadItem);
+            state = State.COMPLETE;
+            if (taskListener != null) {
+                taskListener.onCompleted(downloadItem);
+            }
+        } finally {
+            release();
         }
-
-        release();
 
         return Boolean.TRUE;
     }
@@ -178,6 +222,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         for (VerifyConfig config : verifyConfigs) {
             if (!verify.verify(config)) {
                 Log.e(TAG, "onVerify: check " + config + ", invalid");
+                Log.e(TAG, "onVerify: failed!, delete " + file.delete() + " > " + file.getPath());
                 return false;
             }
         }
@@ -232,7 +277,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         release();
     }
 
-    private void releaseGuard(){
+    private void releaseGuard() {
         for (SystemGuard guard : systemGuards) {
             guard.removeGuardListener(this);
         }

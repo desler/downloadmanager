@@ -15,25 +15,24 @@ import java.net.HttpURLConnection;
 
 public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements DownloadHelper.OnProgressListener {
 
-    private final static String pathFormat = "%s/%s";
-
     private DLTempConfig dlConfig;
     private DownloadHelper downloadHelper;
     private long fileLength;
 
     private final Object spaceWait = new Object();
     private final Object stateWait = new Object();
+    private long startPosition;
 
     public SingleThreadTask(DownloadItem downloadItem) {
         super(downloadItem);
     }
 
-    private DLTempConfig createDLTempConfig(long length) {
+    private DLTempConfig createDLTempConfig(long start, long length) {
 
         DLTempConfig dlTempConfig = new DLTempConfig();
         dlTempConfig.key = downloadItem.getKey();
 
-        dlTempConfig.start = 0;
+        dlTempConfig.start = start;
         dlTempConfig.end = length;
 
         dlTempConfig.filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
@@ -46,7 +45,19 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
     protected boolean onStart() {
 
         try {
-            downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath()).created();
+            downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath());
+
+            String fileFullPath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
+            /**
+             * 是否需要断点续传
+             */
+            long writtenLength = supportBreakpoint ? downloadHelper.resumeBreakPoint(fileFullPath) : 0;
+            if (writtenLength > 0) {
+                Log.w(TAG, "onStart: resume break point written length = " + writtenLength);
+                downloadHelper.withRange(writtenLength, -1);
+                startPosition = writtenLength;
+            }
+            downloadHelper.created();
 
             int responseCode = downloadHelper.getResponseCode();
             if (HttpURLConnection.HTTP_OK == responseCode || responseCode == HttpURLConnection.HTTP_PARTIAL) {
@@ -55,10 +66,10 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
                 Log.e(TAG, "onStart: responseCode = " + responseCode);
                 return false;
             }
-            Log.d(TAG, "onStart: fileLength = " + size2String(fileLength) + ", file = " + downloadItem.getFilename());
+            Log.d(TAG, "onStart: remain fileLength = " + size2String(fileLength) + ", file = " + downloadItem.getFilename());
 
             if (dlConfig == null) {
-                dlConfig = createDLTempConfig(fileLength);
+                dlConfig = createDLTempConfig(startPosition, fileLength);
             }
 
             taskListener.onStart(downloadItem);
@@ -87,16 +98,9 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
     @Override
     protected boolean onDownload() {
 
-        /**
-         * 检测是否需要 断点续写
-         */
-        long writtenLength = supportBreakpoint ? downloadHelper.resumeBreakPoint(dlConfig.filePath) : 0;
-        if (writtenLength > 0) {
-            Log.d(TAG, "onDownload: resume break point written length = " + writtenLength);
-            downloadHelper.withRange(writtenLength, fileLength);
-        }
+        long begin = System.currentTimeMillis();
 
-        while (!spaceGuard.occupySize(fileLength - writtenLength)) {
+        while (!spaceGuard.occupySize(fileLength - startPosition)) {
             Log.w(TAG, "onDownload: wait ");
             synchronized (spaceWait) {
                 try {
@@ -111,6 +115,7 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
 
         try {
             downloadHelper.withProgressListener(this).retrieveFile(dlConfig.filePath);
+            Log.d(TAG, "onDownload: cost = " + (System.currentTimeMillis() - begin));
             return true;
         } catch (IOException e) {
             Log.e(TAG, "onDownload: ", e);

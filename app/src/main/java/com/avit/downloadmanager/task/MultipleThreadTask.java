@@ -37,7 +37,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
      */
     private final static int UNIT_SIZE = 5 * 1024 * 1024;
 
-    private final static String pathFormat = "%s/%s.part.%d";
+    private final static String partPathFormat = "%s/%s.part.%d";
 
     private int maxThreads;
     private long unitSize;
@@ -165,7 +165,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         dlTempConfig.start = index * unitSize;
         dlTempConfig.end = dlTempConfig.start + length;
 
-        dlTempConfig.filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename(), index);
+        dlTempConfig.filePath = String.format(partPathFormat, downloadItem.getSavePath(), downloadItem.getFilename(), index);
         dlTempConfig.seq = index;
 
         return dlTempConfig;
@@ -291,7 +291,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
             return true;
         }
 
-        String filePath = downloadItem.getSavePath() + "/" + downloadItem.getFilename();
+        String filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
         if (files.length == 1) {
             Log.d(TAG, "mergeFiles: only one file, rename it, no need to merge");
             files[0].renameTo(new File(filePath));
@@ -474,12 +474,12 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         long written = supportBreakpoint ? downloadHelper.resumeBreakPoint(dlConfig.filePath) : 0;
         long start = dlConfig.start;
         if (written > 0) {
-            Log.d(TAG, tn + " call: resume break point written length = " + written);
+            Log.w(TAG, tn + " call: resume break point written length = " + written);
             start += written;
         }
         downloadHelper.withRange(start, dlConfig.end).created();
 
-        Log.d(TAG, tn + " call: file length = " + downloadHelper.getContentLength());
+        Log.d(TAG, tn + " call: remain file length = " + MultipleThreadTask.size2String(downloadHelper.getContentLength()));
 
         long fileLength = dlConfig.end - start;
         /**
