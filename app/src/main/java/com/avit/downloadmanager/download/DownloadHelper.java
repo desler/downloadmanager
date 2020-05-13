@@ -92,7 +92,8 @@ public final class DownloadHelper {
         this.outputStream = new FileOutputStream(tmp, true);
 
         byte[] buffer = new byte[BUFFER_SIZE];
-        int offset = 0, totalBytes = 0;
+        int offset = 0;
+        long totalBytes = 0;
         while ((offset = inputStream.read(buffer, 0, buffer.length)) != -1) {
             outputStream.write(buffer, 0, offset);
             totalBytes += offset;
@@ -171,6 +172,6 @@ public final class DownloadHelper {
     }
 
     public interface OnProgressListener {
-        void onProgress(String dlPath, String filePath, int length);
+        void onProgress(String dlPath, String filePath, long length);
     }
 }
