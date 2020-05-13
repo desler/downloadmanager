@@ -247,7 +247,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         }
 
         if (hasError) {
-            Log.e(TAG, "onDownload: error");
+            Log.e(TAG, "onDownload: error " + downloadItem.getFilename());
             return false;
         }
 
@@ -454,6 +454,8 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
     private SpaceGuard spaceGuard;
     private final Object waitSpace = new Object();
 
+    private long breakPoint;
+
     protected SingleTask(DownloadItem downloadItem) {
         this.downloadItem = downloadItem;
     }
@@ -487,14 +489,35 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
 
         String tn = Thread.currentThread().getName();
 
+        /**
+         * 属于当前 task 的 part file 已经下载完成，则无需下载
+         */
+        File partFile = new File(dlConfig.filePath);
+        if (partFile.exists() && partFile.isFile()){
+            Log.w(TAG, tn + " call: part file > " + partFile.getName() + " exist.");
+            long dlength = dlConfig.end - dlConfig.start + 1;
+            if (dlength == partFile.length()){
+                Log.d(TAG, "call: part file > " + partFile.getName() + " may be right, use it!");
+                breakPoint = dlength;
+                onProgress(downloadItem.getDlPath(), dlConfig.filePath, 0);
+                return dlConfig;
+            } else {
+                Log.w(TAG, "call: exsit part file is invalid, delete it > " + partFile.delete());
+            }
+        }
+
         this.downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath());
 
+        /**
+         * 是否断点续传
+         */
         long written = supportBreakpoint ? downloadHelper.resumeBreakPoint(dlConfig.filePath) : 0;
         long start = dlConfig.start;
         if (written > 0) {
             Log.w(TAG, tn + " call: resume break point written length = " + written);
             start += written;
-            dlConfig.written = written;
+            breakPoint = written;
+            onProgress(downloadItem.getDlPath(), dlConfig.filePath, 0);
         }
         downloadHelper.withRange(start, dlConfig.end).created();
 
@@ -539,10 +562,10 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
     }
 
     @Override
-    public void onProgress(String dlPath, String filePath, int length) {
-        dlConfig.written = length;
+    public void onProgress(String dlPath, String filePath, long length) {
+        dlConfig.written = breakPoint + length;
         if (loadListener != null) {
-            loadListener.onUpdate(dlConfig, length);
+            loadListener.onUpdate(dlConfig, dlConfig.written);
         }
     }
 

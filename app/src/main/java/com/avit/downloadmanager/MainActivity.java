@@ -48,8 +48,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
-        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
-//        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
+//        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
+        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -158,17 +158,16 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
     public void onCompleted(DownloadItem item) {
         Log.d(TAG, "onCompleted: " + item.getFilename());
 
-        if (item.getFilename().toLowerCase().endsWith(".apk")) {
-            Log.d(TAG, "onCompleted: will install " + item.getFilename());
-            File apkFile = new File(item.getSavePath() + File.separator + item.getFilename());
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
-            startActivity(intent);
-
-            apkInstallWatch.addApk(apkFile.getPath());
-        }
-
+//        if (item.getFilename().toLowerCase().endsWith(".apk")) {
+//            Log.d(TAG, "onCompleted: will install " + item.getFilename());
+//            File apkFile = new File(item.getSavePath() + File.separator + item.getFilename());
+//            Intent intent = new Intent(Intent.ACTION_VIEW);
+//            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//            intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+//            startActivity(intent);
+//
+//            apkInstallWatch.addApk(apkFile.getPath());
+//        }
     }
 
     /**
@@ -180,7 +179,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
     @Override
     public void onUpdateProgress(DownloadItem item, int percent) {
         if (percent % 5 == 0) {
-            Log.d(TAG, "onUpdateProgress: " + item.getFilename() + "->" + percent);
+            Log.d(TAG, "onUpdateProgress: " + item.getFilename() + " -> " + percent);
         }
     }
 

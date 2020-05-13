@@ -21,7 +21,7 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
 
     private final Object spaceWait = new Object();
     private final Object stateWait = new Object();
-    private long startPosition;
+    private long breakPoint;
 
     public SingleThreadTask(DownloadItem downloadItem) {
         super(downloadItem);
@@ -56,13 +56,13 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
             if (writtenLength > 0) {
                 Log.w(TAG, "onStart: resume break point written length = " + writtenLength);
                 downloadHelper.withRange(writtenLength, -1);
-                startPosition = writtenLength;
+                breakPoint = writtenLength;
             }
             downloadHelper.created();
 
             int responseCode = downloadHelper.getResponseCode();
             if (HttpURLConnection.HTTP_OK == responseCode || responseCode == HttpURLConnection.HTTP_PARTIAL) {
-                fileLength = downloadHelper.getContentLength();
+                fileLength = downloadHelper.getContentLength() + breakPoint;
             } else {
                 Log.e(TAG, "onStart: responseCode = " + responseCode);
                 return false;
@@ -70,8 +70,7 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
             Log.d(TAG, "onStart: remain fileLength = " + fileLength + ", file = " + downloadItem.getFilename());
 
             if (dlConfig == null) {
-                dlConfig = createDLTempConfig(startPosition, fileLength);
-                dlConfig.written = startPosition;
+                dlConfig = createDLTempConfig(breakPoint, fileLength);
             }
 
             taskListener.onStart(downloadItem);
@@ -102,7 +101,7 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
 
         long begin = System.currentTimeMillis();
 
-        while (!spaceGuard.occupySize(fileLength - startPosition)) {
+        while (!spaceGuard.occupySize(fileLength - breakPoint)) {
             Log.w(TAG, "onDownload: wait ");
             synchronized (spaceWait) {
                 try {
@@ -147,10 +146,10 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
 
     private int prePercent;
     @Override
-    public void onProgress(String dlPath, String filePath, int length) {
-        dlConfig.written = length;
+    public void onProgress(String dlPath, String filePath, long length) {
+        dlConfig.written = breakPoint + length;
 
-        int percent = (int) (length * 1.0f / fileLength * 100);
+        int percent = (int) (dlConfig.written * 1.0f / fileLength * 100);
         if (percent != prePercent) {
             taskListener.onUpdateProgress(downloadItem, percent);
             prePercent = percent;
