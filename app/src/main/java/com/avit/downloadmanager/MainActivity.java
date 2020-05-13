@@ -48,8 +48,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
-//        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
-        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
+        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
+//        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -240,9 +240,9 @@ class VerifyConfigS {
         }
 
         if (t.startsWith("SHA")) {
-            return VerifyConfig.create(IVerify.VerifyType.SHA.setSubType(t), value);
+            return VerifyConfig.create(IVerify.VerifyType.SHA.withSubType(t), value);
         }
 
-        throw new IllegalArgumentException("DO NOT support this algorithm -> " + type);
+        throw new IllegalArgumentException("DO NOT support this algorithm -> " + t);
     }
 }

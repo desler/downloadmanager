@@ -239,7 +239,7 @@ public final class SpaceGuard extends SystemGuard {
 
 final class GuardTask implements Runnable {
 
-    private final static String TAG = "GuardTask";
+    private final static String TAG = "SpaceGuard::GuardTask";
 
     private final SpaceGuard spaceGuard;
     private volatile boolean isDisable;
@@ -283,7 +283,7 @@ final class GuardTask implements Runnable {
 
 final class MountDir {
 
-    private final static String TAG = "MountDir";
+    private final static String TAG = "SpaceGuard::MountDir";
 
     private final static List<String> dirCache = new ArrayList<>();
 

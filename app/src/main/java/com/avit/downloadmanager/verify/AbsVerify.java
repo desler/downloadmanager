@@ -39,7 +39,7 @@ public abstract class AbsVerify<CONTENT> implements IVerify{
             return true;
         }
 
-        if (type == VerifyType.MD5 || type == VerifyType.SHA){
+        if (type == VerifyType.MD5 || type.getSubType().startsWith("SHA")){
             return isValidDigest(type.getSubType(), verify);
         }
 

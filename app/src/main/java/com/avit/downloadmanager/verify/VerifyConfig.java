@@ -36,6 +36,6 @@ public final class VerifyConfig {
     @NonNull
     @Override
     public String toString() {
-        return String.format("[%s, %s]", type.name(), verify);
+        return String.format("[%s, %s]", type.getSubType(), verify);
     }
 }

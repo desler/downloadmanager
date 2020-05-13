@@ -58,5 +58,33 @@
         "value": "06216aacac8b530b05018a11daf4c7e5a1cee3fe50827858b54d41cbf0ed70d772cc56f02577cfe365ecbbb8fc3bb67e450fa1f95ae1bb8d26dea8435273aa30"
       }
     ]
+  },
+  {
+    "item": {
+      "version": "1",
+      "dlPath": "http://up.cp33.ott.cibntv.net/apk/cibnvst/updateDownload/BMJCQLDKHWQ6SFYSCTJH.apk"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "0ee6ab8fca79980401b7cff61c0a889a"
+      },
+      {
+        "type": "crc32",
+        "value": "18333d74"
+      },
+      {
+        "type": "sha-1",
+        "value": "11203b67d4d3aef0a8ddf8ddc1f4b5f6bb354dff"
+      },
+      {
+        "type": "sha-224",
+        "value": "bfd4f4f024264372404f98185c8f2866f9ecf6cb853be3f2a394ed2b"
+      },
+      {
+        "type": "sha-384",
+        "value": "ee29bfa37612e6b28adb5ac0d89b99d6013e7f2970171f0902489ad653cb959b6c9e5f24c99dfa0d2f94d85ffa07c4a5"
+      }
+    ]
   }
 ]

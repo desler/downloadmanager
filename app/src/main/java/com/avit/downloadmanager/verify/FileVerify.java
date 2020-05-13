@@ -14,7 +14,7 @@ public final class FileVerify extends AbsVerify<File> {
 
     FileVerify(File file) {
         super(file);
-        TAG  = "FileVerify";
+        TAG = "FileVerify";
     }
 
     private boolean isValidDigest(MessageDigest digest, String verify) {
@@ -31,7 +31,7 @@ public final class FileVerify extends AbsVerify<File> {
             byte[] byteArray = digest.digest();
             String sum = toHex(byteArray);
 
-            Log.d(TAG, "isValidDigest: " + sum);
+            Log.d(TAG, "isValidDigest: " + digest.getAlgorithm() + " -> " + sum);
 
             return verify.equalsIgnoreCase(sum);
 
