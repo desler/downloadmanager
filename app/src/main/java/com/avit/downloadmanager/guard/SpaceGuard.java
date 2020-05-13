@@ -37,7 +37,7 @@ public final class SpaceGuard extends SystemGuard {
             return ERROR;
         }
 
-        String dir = MountDir.path2MountDir(path);
+        String dir = MountDir.path2MountDir(path + File.separator);
 
         if (TextUtils.isEmpty(dir)) {
             Log.e(TAG, "createSpaceGuard: dir is null");
@@ -266,7 +266,7 @@ final class GuardTask implements Runnable {
 
         long tfsize = freeSize.addAndGet(-totalSize.get());
         if (spaceGuard.checkMaybeFreeSpace(tfsize) &&
-                (spaceGuard.preEvent == SpaceGuardEvent.EVENT_ERROR || spaceGuard.preEvent == SpaceGuardEvent.EVENT_ERROR)) {
+                (spaceGuard.preEvent == SpaceGuardEvent.EVENT_ERROR || spaceGuard.preEvent == SpaceGuardEvent.EVENT_WARNING)) {
             Log.d(TAG, guardDir + " enough size = " + MountDir.size2String(tfsize));
             spaceGuard.notifyEvent(IGuard.Type.SPACE, new SpaceGuardEvent(SpaceGuardEvent.EVENT_ENOUGH, "enough size", guardDir, tfsize));
         }
@@ -392,7 +392,7 @@ final class MountDir {
         String[] dirs = parseUserDirs(cmdLines);
 
         for (String dir : dirs) {
-            SpaceGuard.createSpaceGuard(context, dir + "/");
+            SpaceGuard.createSpaceGuard(context, dir);
         }
 
         return dirs.length;
