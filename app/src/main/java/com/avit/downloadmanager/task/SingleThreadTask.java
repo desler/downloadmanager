@@ -150,7 +150,9 @@ public class SingleThreadTask extends AbstactTask<SingleThreadTask> implements D
     @Override
     public void release() {
         super.release();
-        downloadHelper.release();
+        if (downloadHelper != null) {
+            downloadHelper.release();
+        }
     }
 
     private int prePercent;

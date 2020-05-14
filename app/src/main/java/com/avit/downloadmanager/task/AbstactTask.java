@@ -187,7 +187,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
             return Boolean.FALSE;
         }
 
-        try {
+//        try {
             if (isValidState() && !onVerify()) {
                 taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(), "check verify invalid"));
                 return Boolean.FALSE;
@@ -197,9 +197,9 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
             if (taskListener != null) {
                 taskListener.onCompleted(downloadItem);
             }
-        } finally {
+//        } finally {
             release();
-        }
+//        }
 
         return Boolean.TRUE;
     }

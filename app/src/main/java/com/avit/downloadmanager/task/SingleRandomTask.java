@@ -198,7 +198,9 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
     @Override
     public void release() {
         super.release();
-        downloadHelper.release();
+        if (downloadHelper != null) {
+            downloadHelper.release();
+        }
     }
 
     private int prePercent;

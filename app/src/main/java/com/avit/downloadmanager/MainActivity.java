@@ -17,6 +17,7 @@ import com.avit.downloadmanager.task.MultipleRandomTask;
 import com.avit.downloadmanager.task.SingleRandomTask;
 import com.avit.downloadmanager.task.SingleThreadTask;
 import com.avit.downloadmanager.task.TaskListener;
+import com.avit.downloadmanager.task.retry.RetryTask;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyConfig;
 import com.avit.downloadmanager.watch.APKInstallWatch;
@@ -77,7 +78,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                 .withVerifyConfig(mock.configs);
 
 //        DownloadManager.getInstance().submit(singleThreadTask);
-        DownloadManager.getInstance().submitNow(singleThreadTask);
+//        DownloadManager.getInstance().submitNow(singleThreadTask);
+        DownloadManager.getInstance().submit(new RetryTask(singleThreadTask));
 //        DownloadManager.getInstance().submitNow(new RetryTask(singleThreadTask));
     }
 
@@ -126,8 +128,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         DownloadMock[] downloadMocks = initMockData();
         for (DownloadMock mock : downloadMocks) {
             fillDownloadItem(mock.item);
-//            if (mock.item.getFilename().startsWith("com.dotemu"))
-//                continue;
+            if (mock.item.getFilename().startsWith("com.dotemu"))
+                continue;
 
             if (mock.verifys != null) {
                 VerifyConfig[] configs = new VerifyConfig[mock.verifys.length];

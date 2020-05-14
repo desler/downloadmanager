@@ -14,6 +14,7 @@ import com.avit.downloadmanager.verify.VerifyConfig;
 
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -94,7 +95,7 @@ public final class RetryTask implements ITask {
 
             --retryTimes;
 
-            FutureTask<Boolean> futureTask = (FutureTask<Boolean>) retryService.schedule(task, delayed, TimeUnit.MILLISECONDS);
+            Future<Boolean> futureTask = retryService.schedule(task, delayed, TimeUnit.MILLISECONDS);
             long begin = System.currentTimeMillis();
 
             /**
