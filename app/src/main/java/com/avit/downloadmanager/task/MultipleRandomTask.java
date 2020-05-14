@@ -177,7 +177,7 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
     private DLTempConfig createDLTempConfig(int index, long span) {
 
         DLTempConfig dlTempConfig = new DLTempConfig();
-        dlTempConfig.key = downloadItem.getKey();
+        dlTempConfig.key = downloadItem.getKey() + "#multi";
 
         dlTempConfig.start = index * unitSize;
         dlTempConfig.end = dlTempConfig.start + span;
@@ -210,13 +210,21 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
          * 创建 固定大小的文件
          */
         File file = new File(dlTempConfigs[0].filePath + ".tmp");
+        RandomAccessFile accessFile = null;
         try {
-            RandomAccessFile accessFile = new RandomAccessFile(file, "rw");
+            accessFile = new RandomAccessFile(file, "rw");
             accessFile.setLength(fileLength);
         } catch (IOException e) {
             Log.e(TAG, "onDownload: ", e);
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), e.toString()));
             return false;
+        } finally {
+            if (accessFile != null) {
+                try {
+                    accessFile.close();
+                } catch (IOException e) {
+                }
+            }
         }
 
         for (int i = 0; i < count; ++i) {

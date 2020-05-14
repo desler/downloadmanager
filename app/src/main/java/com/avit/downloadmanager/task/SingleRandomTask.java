@@ -35,7 +35,7 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
     private DLTempConfig createDLTempConfig(long start, long length) {
 
         DLTempConfig dlTempConfig = new DLTempConfig();
-        dlTempConfig.key = downloadItem.getKey();
+        dlTempConfig.key = downloadItem.getKey() + "#single";
 
         dlTempConfig.start = start;
         dlTempConfig.end = length;
@@ -48,6 +48,8 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
 
     @Override
     protected boolean onStart() {
+
+        RandomAccessFile accessFile = null;
 
         try {
             downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath());
@@ -85,7 +87,7 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
             /**
              * 创建固定大小文件作为占位
              */
-            RandomAccessFile accessFile = new RandomAccessFile(fileTemp, "rw");
+            accessFile = new RandomAccessFile(fileTemp, "rw");
             accessFile.setLength(fileLength);
 
             Log.d(TAG, "onStart: remain fileLength = " + contentLength + ", file = " + downloadItem.getFilename());
@@ -121,6 +123,13 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
                 downloadHelper.release();
 
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), e.toString(), e));
+        } finally {
+            if (accessFile != null) {
+                try {
+                    accessFile.close();
+                } catch (IOException e) {
+                }
+            }
         }
 
         return false;
