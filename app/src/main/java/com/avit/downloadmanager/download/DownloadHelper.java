@@ -36,8 +36,11 @@ public final class DownloadHelper {
 
     private long start, end;
 
+    private String tmpSuffix;
+
     public DownloadHelper() {
         isNeedRename = true;
+        tmpSuffix = ".tmp";
     }
 
     public DownloadHelper withPath(String dlPath) {
@@ -56,6 +59,11 @@ public final class DownloadHelper {
             range = String.format(Locale.ENGLISH, "bytes=%d-", start);
         }
         Log.d(TAG, "withRange: " + range);
+        return this;
+    }
+
+    public DownloadHelper withTmpSuffix(String tmpSuffix) {
+        this.tmpSuffix = tmpSuffix;
         return this;
     }
 
@@ -101,7 +109,7 @@ public final class DownloadHelper {
     public File retrieveFile(String fileFullPath) throws IOException {
         this.inputStream = httpURLConnection.getInputStream();
 
-        File tmp = new File(fileFullPath + ".tmp");
+        File tmp = new File(fileFullPath + tmpSuffix);
         this.outputStream = new FileOutputStream(tmp, true);
 
         byte[] buffer = new byte[BUFFER_SIZE];
@@ -139,7 +147,7 @@ public final class DownloadHelper {
 
         this.inputStream = httpURLConnection.getInputStream();
 
-        File tmp = new File(fileFullPath + ".tmp");
+        File tmp = new File(fileFullPath + tmpSuffix);
         accessFile = new RandomAccessFile(tmp, "rw");
         accessFile.seek(start);
 
