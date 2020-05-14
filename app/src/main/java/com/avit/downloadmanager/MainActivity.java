@@ -1,6 +1,5 @@
 package com.avit.downloadmanager;
 
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -14,7 +13,8 @@ import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.task.AbstactTask;
-import com.avit.downloadmanager.task.MultipleThreadTask;
+import com.avit.downloadmanager.task.MultipleRandomTask;
+import com.avit.downloadmanager.task.SingleRandomTask;
 import com.avit.downloadmanager.task.SingleThreadTask;
 import com.avit.downloadmanager.task.TaskListener;
 import com.avit.downloadmanager.verify.IVerify;
@@ -23,7 +23,6 @@ import com.avit.downloadmanager.watch.APKInstallWatch;
 import com.google.gson.Gson;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -32,7 +31,11 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
     private final static String TAG = "MainActivity";
 
     private void fillDownloadItem(DownloadItem item) {
-        String filename = item.getDlPath().substring(item.getDlPath().lastIndexOf("/") + 1);
+
+        Uri uri = Uri.parse(item.getDlPath());
+//        Log.w(TAG, "fillDownloadItem: " + uri.getLastPathSegment());
+
+        String filename = uri.getLastPathSegment();
         item.withSavePath(Environment.getExternalStorageDirectory().getPath())
                 .withFilename(filename);
     }
@@ -48,8 +51,10 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
+//        AbstactTask singleThreadTask = new MultipleRandomTask(downloadItem)
 //        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
-        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
+        AbstactTask singleThreadTask = new SingleRandomTask(downloadItem)
+//        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -121,6 +126,9 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         DownloadMock[] downloadMocks = initMockData();
         for (DownloadMock mock : downloadMocks) {
             fillDownloadItem(mock.item);
+            if (mock.item.getFilename().startsWith("com.dotemu"))
+                continue;
+
             if (mock.verifys != null) {
                 VerifyConfig[] configs = new VerifyConfig[mock.verifys.length];
                 for (int i = 0; i < configs.length; ++i) {

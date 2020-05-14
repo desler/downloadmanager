@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Locale;
@@ -28,8 +29,16 @@ public final class DownloadHelper {
 
     private InputStream inputStream;
     private OutputStream outputStream;
+    private RandomAccessFile accessFile;
 
     private OnProgressListener onProgressListener;
+    private boolean isNeedRename;
+
+    private long start, end;
+
+    public DownloadHelper() {
+        isNeedRename = true;
+    }
 
     public DownloadHelper withPath(String dlPath) {
         this.dlPath = dlPath;
@@ -37,6 +46,10 @@ public final class DownloadHelper {
     }
 
     public DownloadHelper withRange(long start, long end) {
+
+        this.start = start;
+        this.end = end;
+
         if (end > 0) {
             range = String.format(Locale.ENGLISH, "bytes=%d-%d", start, end);
         } else {
@@ -110,13 +123,52 @@ public final class DownloadHelper {
             Log.w(TAG, "retrieveFile: " + file.delete());
         }
 
-        boolean isRename = tmp.renameTo(file);
-        if (!isRename) {
-            throw new IOException(tmp.getName() + " rename FAILED");
-        } else {
-            Log.d(TAG, "retrieveFile: rename to " + file.getName());
+        if (isNeedRename) {
+            boolean isRename = tmp.renameTo(file);
+            if (!isRename) {
+                throw new IOException(tmp.getName() + " rename FAILED");
+            } else {
+                Log.d(TAG, "retrieveFile: rename to " + file.getName());
+            }
         }
 
+        return tmp;
+    }
+
+    public File retrieveFileByRandom(String fileFullPath) throws IOException{
+
+        this.inputStream = httpURLConnection.getInputStream();
+
+        File tmp = new File(fileFullPath + ".tmp");
+        accessFile = new RandomAccessFile(tmp, "rw");
+        accessFile.seek(start);
+
+        byte[] buffer = new byte[BUFFER_SIZE];
+        int offset = 0;
+        long totalBytes = 0;
+        while ((offset = inputStream.read(buffer, 0, buffer.length)) != -1) {
+            accessFile.write(buffer, 0, offset);
+            totalBytes += offset;
+            if (onProgressListener != null) {
+                onProgressListener.onProgress(dlPath, fileFullPath, totalBytes);
+            }
+        }
+
+        release();
+
+        File file = new File(fileFullPath);
+        if (file.exists()) {
+            Log.w(TAG, "retrieveFileByRandom: " + file.delete());
+        }
+
+        if (isNeedRename) {
+            boolean isRename = tmp.renameTo(new File(fileFullPath));
+            if (!isRename) {
+                throw new IOException(tmp.getName() + " rename FAILED");
+            } else {
+                Log.d(TAG, "retrieveFileByRandom: rename to " + file.getName());
+            }
+        }
         return tmp;
     }
 
@@ -165,10 +217,23 @@ public final class DownloadHelper {
         } catch (IOException e) {
         }
 
+        try {
+            if (accessFile != null){
+                accessFile.close();
+                accessFile = null;
+            }
+        } catch (IOException e) {
+        }
+
         if (this.httpURLConnection != null) {
             this.httpURLConnection.disconnect();
             this.httpURLConnection = null;
         }
+    }
+
+    public DownloadHelper noRename() {
+        isNeedRename = false;
+        return this;
     }
 
     public interface OnProgressListener {

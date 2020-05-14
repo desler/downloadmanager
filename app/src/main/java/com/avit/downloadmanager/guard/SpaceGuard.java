@@ -47,7 +47,6 @@ public final class SpaceGuard extends SystemGuard {
         SpaceGuard spaceGuard = cacheGuard.getSpaceGuard(dir);
         if (spaceGuard == null) {
             spaceGuard = new SpaceGuard(context, dir);
-//            spaceGuard.guard();
             Log.d(TAG, "createSpaceGuard: dir = " + dir);
             cacheGuard.putSpaceGuard(dir, spaceGuard);
         }
@@ -96,7 +95,6 @@ public final class SpaceGuard extends SystemGuard {
     private final static int CHECK_INTERVAL = 15;/* s */
 
     String guardDir;
-    AtomicLong totalSize;
     AtomicLong freeSize;
 
     int preEvent;
@@ -107,7 +105,6 @@ public final class SpaceGuard extends SystemGuard {
     private SpaceGuard(Context context, String dir) {
         super(context);
         this.guardDir = dir;
-        this.totalSize = new AtomicLong(0);
         this.freeSize = new AtomicLong(0);
     }
 
@@ -123,25 +120,19 @@ public final class SpaceGuard extends SystemGuard {
 
     public boolean occupySize(long size) {
 
-        long t = totalSize.get() + size;
-        long tfsize = freeSize.get() - t;
+        Log.d(TAG, "occupySize: free = " + freeSize.get());
 
-        if (!checkMaybeFreeSpace(tfsize))
+        if (!checkMaybeFreeSpace(freeSize.get() - size))
             return false;
 
-        freeSize.addAndGet(-totalSize.addAndGet(size));
         return true;
     }
 
     public long revertSize(long size) {
-        long tfsize = freeSize.addAndGet(-totalSize.addAndGet(-size));
 
-        if (tfsize > RED_SIZE) {
-            Log.d(TAG, "revertSize: enough size, dir = " + guardDir);
-            notifyEvent(Type.SPACE, new SpaceGuardEvent(SpaceGuardEvent.EVENT_ENOUGH, "enough size", guardDir, tfsize));
-        }
+        checkMaybeFreeSpace(freeSize.get());
 
-        return tfsize;
+        return freeSize.get();
     }
 
     public boolean checkMaybeFreeSpace(long tfsize) {
@@ -168,7 +159,7 @@ public final class SpaceGuard extends SystemGuard {
     public int removeGuardListener(IGuardListener guardListener) {
         int size = guardHelper.removeSpaceGuardListener(guardDir, guardListener);
         Log.d(TAG, "removeGuardListener: " + size);
-        if (size == 0){
+        if (size == 0) {
             disable();
         }
         return size;
@@ -176,7 +167,15 @@ public final class SpaceGuard extends SystemGuard {
 
     @Override
     public void notifyEvent(Type type, GuardEvent event) {
-        super.notifyEvent(type, event);
+
+        if (event.reason == SpaceGuardEvent.EVENT_ENOUGH
+                && (preEvent == SpaceGuardEvent.EVENT_ERROR || preEvent == SpaceGuardEvent.EVENT_WARNING)
+        ) {
+            super.notifyEvent(type, event);
+        } else if (event.reason != SpaceGuardEvent.EVENT_ENOUGH) {
+            super.notifyEvent(type, event);
+        }
+
         preEvent = event.reason;
     }
 
@@ -257,18 +256,13 @@ final class GuardTask implements Runnable {
         }
 
         AtomicLong freeSize = spaceGuard.freeSize;
-        AtomicLong totalSize = spaceGuard.totalSize;
 
         File file = new File(guardDir);
         freeSize.set(file.getFreeSpace());
-        long fsz = freeSize.get();
-        Log.d(TAG, guardDir + " free size = " + MountDir.size2String(fsz));
 
-        long tfsize = freeSize.addAndGet(-totalSize.get());
-        if (spaceGuard.checkMaybeFreeSpace(tfsize) &&
-                (spaceGuard.preEvent == SpaceGuardEvent.EVENT_ERROR || spaceGuard.preEvent == SpaceGuardEvent.EVENT_WARNING)) {
-            Log.d(TAG, guardDir + " enough size = " + MountDir.size2String(tfsize));
-            spaceGuard.notifyEvent(IGuard.Type.SPACE, new SpaceGuardEvent(SpaceGuardEvent.EVENT_ENOUGH, "enough size", guardDir, tfsize));
+        if (spaceGuard.checkMaybeFreeSpace(freeSize.get())) {
+            Log.d(TAG, guardDir + " enough size = " + MountDir.size2String(freeSize.get()));
+            spaceGuard.notifyEvent(IGuard.Type.SPACE, new SpaceGuardEvent(SpaceGuardEvent.EVENT_ENOUGH, "enough size", guardDir, freeSize.get()));
         }
     }
 

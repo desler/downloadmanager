@@ -2,6 +2,8 @@ package com.avit.downloadmanager.data;
 
 import android.text.TextUtils;
 
+import com.avit.downloadmanager.utils.DigestText;
+
 public class DownloadItem {
     private String version;
 
@@ -13,17 +15,17 @@ public class DownloadItem {
 
     private String key;
 
-    public DownloadItem withDlPath(String dlPath){
+    public DownloadItem withDlPath(String dlPath) {
         this.dlPath = dlPath;
         return this;
     }
 
-    public DownloadItem withSavePath(String savePath){
+    public DownloadItem withSavePath(String savePath) {
         this.savePath = savePath;
         return this;
     }
 
-    public DownloadItem withTag(Object object){
+    public DownloadItem withTag(Object object) {
         this.object = object;
         return this;
     }
@@ -46,13 +48,13 @@ public class DownloadItem {
     }
 
     public String getKey() {
-        if (TextUtils.isEmpty(key)){
-            key = filename;
+        if (TextUtils.isEmpty(key)) {
+            key = DigestText.md5(version + "#" + dlPath);
         }
         return key;
     }
 
-    public static DownloadItem create(){
+    public static DownloadItem create() {
         return new DownloadItem();
     }
 }

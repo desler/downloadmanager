@@ -14,10 +14,10 @@ import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.guard.SpaceGuardEvent;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -25,8 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 
-@Deprecated
-public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> implements SingleTask.LoadListener {
+public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> implements RandomTask.LoadListener {
 
     /**
      * 最多 4 个线程
@@ -44,7 +43,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
     private long unitSize;
     private long fileLength;
 
-    private SingleTask[] singleTasks;
+    private RandomTask[] singleTasks;
     private Future<DLTempConfig>[] futures;
     private DLTempConfig[] dlTempConfigs;
 
@@ -56,7 +55,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         @Override
         public Thread newThread(Runnable r) {
             Thread thread = new Thread(r);
-            thread.setName("MultipleThreadTask#" + thread.getId());
+            thread.setName("MultipleTask#" + thread.getId());
             thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
                 @Override
                 public void uncaughtException(@NonNull Thread t, @NonNull Throwable e) {
@@ -68,15 +67,15 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
     });
     private final Object stateWait = new Object();
 
-    public MultipleThreadTask(DownloadItem downloadItem) {
+    public MultipleRandomTask(DownloadItem downloadItem) {
         super(downloadItem);
-        TAG = "MultipleThreadTask";
+        TAG = "MultipleRandomTask";
 
         maxThreads = MAX_THREADS;
         unitSize = UNIT_SIZE;
     }
 
-    public MultipleThreadTask withNumThreads(int max) {
+    public MultipleRandomTask withNumThreads(int max) {
 
         int num = max;
         if (max > MAX_THREADS) {
@@ -135,7 +134,6 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         }
 
         Log.d(TAG, "onStart: unit size = " + unitSize);
-
         long modSize = fileLength % unitSize;
         if (modSize != 0) {
             count = count + 1;
@@ -160,7 +158,16 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
             dlTempConfigs[i] = createDLTempConfig(i, unitSize - 1);
         }
 
-        clearFiles();
+        File fileTemp = new File(dlTempConfigs[0].filePath + ".tmp");
+        if (supportBreakpoint && fileTemp.exists() && fileTemp.isFile()) {
+            List<DLTempConfig> configs = breakPointHelper.findByKey(downloadItem.getKey());
+            Log.d(TAG, "onStart: break point configs size = " + configs.size());
+            for (int i = 0; i < configs.size(); ++i) {
+                DLTempConfig tmp = configs.get(i);
+                Log.d(TAG, "onStart: break point set, seq = " + tmp.seq);
+                dlTempConfigs[tmp.seq].written = tmp.written;
+            }
+        }
 
         taskListener.onStart(downloadItem);
 
@@ -175,36 +182,15 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         dlTempConfig.start = index * unitSize;
         dlTempConfig.end = dlTempConfig.start + span;
 
-        dlTempConfig.filePath = String.format(partPathFormat, downloadItem.getSavePath(), downloadItem.getFilename(), index);
+        dlTempConfig.filePath = String.format(pathFormat + ".multi", downloadItem.getSavePath(), downloadItem.getFilename());
         dlTempConfig.seq = index;
 
         return dlTempConfig;
     }
 
-    private SingleTask createSingleTask(DLTempConfig tempConfig) {
-        SingleTask singleTask = new SingleTask(downloadItem).withLoadListener(this);
-        /**
-         * 是否支持断点续写
-         */
-        if (supportBreakpoint) {
-            singleTask.supportBreakpoint();
-        }
+    private RandomTask createSingleTask(DLTempConfig tempConfig) {
+        RandomTask singleTask = new RandomTask(downloadItem).withLoadListener(this);
         return singleTask.withDLTempConfig(tempConfig);
-    }
-
-    private void clearFiles() {
-        String path = downloadItem.getSavePath() + File.separator + downloadItem.getFilename();
-        String tmpPath = path + ".tmp";
-
-        File file = new File(path);
-        if (file.exists()) {
-            Log.w(TAG, "onDownload: file exists delete " + file.delete());
-        }
-
-        file = new File(tmpPath);
-        if (file.exists()) {
-            Log.w(TAG, "onDownload: tmp exists delete " + file.delete());
-        }
     }
 
     @Override
@@ -212,13 +198,26 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
 
         int count = dlTempConfigs.length;
 
-        singleTasks = new SingleTask[count];
+        singleTasks = new RandomTask[count];
         futures = new Future[count];
 
         long begin = System.currentTimeMillis();
         Log.d(TAG, "onDownload: begin download at " + begin);
 
         state = State.LOADING;
+
+        /**
+         * 创建 固定大小的文件
+         */
+        File file = new File(dlTempConfigs[0].filePath + ".tmp");
+        try {
+            RandomAccessFile accessFile = new RandomAccessFile(file, "rw");
+            accessFile.setLength(fileLength);
+        } catch (IOException e) {
+            Log.e(TAG, "onDownload: ", e);
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), e.toString()));
+            return false;
+        }
 
         for (int i = 0; i < count; ++i) {
 
@@ -253,22 +252,23 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         }
 
         Log.d(TAG, "onDownload: download finish, cost = " + (System.currentTimeMillis() - begin));
-
+        /**
+         * 下载完成，删除断点记录
+         */
+        Log.d(TAG, "onDownload: break point delete, " + breakPointHelper.deleteByKey(downloadItem.getKey()));
         /**
          * task all done.
          */
-        File[] files = new File[count];
-        for (int i = 0; i < count; ++i) {
-            String partFile = dlTempConfigs[i].filePath;
-//            Log.d(TAG, "onDownload: merge files " + partFile);
-            files[i] = new File(partFile);
+        if (file.exists() && file.isFile()) {
+            boolean res = file.renameTo(new File(String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename())));
+            if (!res) {
+                Log.e(TAG, "onDownload: rename FAILED");
+                taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), "rename FAILED"));
+                return false;
+            } else {
+                Log.d(TAG, "onDownload: rename to " + file.getName());
+            }
         }
-
-        if (!mergeFiles(files)) {
-            return false;
-        }
-
-        Log.d(TAG, "onDownload: merge success");
 
         return true;
     }
@@ -279,7 +279,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
 
         if (guardEvent.type == IGuard.Type.SPACE) {
             if (guardEvent.reason == SpaceGuardEvent.EVENT_ENOUGH) {
-                for (SingleTask task : singleTasks) {
+                for (RandomTask task : singleTasks) {
                     task.notifySpace();
                 }
             }
@@ -288,100 +288,14 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
         return true;
     }
 
-    /**
-     * 需要 严格的保证传入文件的 顺序，否则合并以后的文件也是错的，校验无法通过
-     *
-     * @param files
-     * @return
-     */
-    private boolean mergeFiles(File... files) {
-
-        if (files == null || files.length == 0) {
-            Log.w(TAG, "mergeFiles: nothing need to merge");
-            return true;
-        }
-
-        String filePath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
-        if (files.length == 1) {
-            Log.d(TAG, "mergeFiles: only one file, rename it, no need to merge");
-            files[0].renameTo(new File(filePath));
-            return true;
-        }
-
-        long begin = System.currentTimeMillis();
-        Log.d(TAG, "mergeFiles: begin = " + begin);
-
-        File file = new File(filePath + ".tmp");
-
-        FileOutputStream fileOutputStream = null;
-        FileInputStream fileInputStream = null;
-        try {
-            fileOutputStream = new FileOutputStream(file);
-            /**
-             * 本地 读写，速度快，使用 大缓冲方式。
-             */
-            byte buffer[] = new byte[1 * 1024 * 1024];
-            for (File f : files) {
-                Log.d(TAG, "mergeFiles: " + f.getName());
-
-                int count = 0;
-                fileInputStream = new FileInputStream(f);
-                while ((count = fileInputStream.read(buffer, 0, buffer.length)) != -1) {
-                    fileOutputStream.write(buffer, 0, count);
-                }
-                fileOutputStream.flush();
-                fileInputStream.close();
-                Log.d(TAG, "mergeFiles: finish ");
-            }
-
-            fileOutputStream.flush();
-            fileOutputStream.close();
-
-            boolean isRename = file.renameTo(new File(filePath));
-            if (!isRename) {
-                throw new IOException(file.getName() + " rename FAILED");
-            } else {
-                Log.d(TAG, "mergeFiles: rename to " + downloadItem.getFilename());
-            }
-            /**
-             * 删除多线程下载时，各线程 生成的 part.x 文件
-             */
-            for (File f : files) {
-                Log.d(TAG, "mergeFiles: delete part file " + f.getName() + " > " + f.delete());
-            }
-
-            Log.d(TAG, "mergeFiles: cost = " + (System.currentTimeMillis() - begin));
-
-            return true;
-
-        } catch (Throwable e) {
-            Log.e(TAG, "mergeFiles: ", e);
-            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
-        } finally {
-            if (fileInputStream != null) {
-                try {
-                    fileInputStream.close();
-                } catch (IOException e) {
-                }
-            }
-            if (fileOutputStream != null) {
-                try {
-                    fileOutputStream.close();
-                } catch (IOException e) {
-
-                }
-            }
-        }
-
-        return false;
-    }
-
     private int prePercent;
+
     @Override
     public void onUpdate(DLTempConfig dlTempConfig, long size) {
-//        Log.d(TAG, "onUpdate: " + dlTempConfig);
 
-        int percent = (int)(calculateProgress() * 100);
+        breakPointHelper.save(dlTempConfig);
+
+        int percent = (int) (calculateProgress() * 100);
         if (percent != prePercent) {
             taskListener.onUpdateProgress(getDownloadItem(), percent);
             prePercent = percent;
@@ -411,8 +325,6 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
             alSize += config.written;
         }
 
-//        Log.d(TAG, String.format("calculateProgress: [%d, %d]", alSize, fileLength));
-
         return alSize * 1.0f / fileLength;
     }
 
@@ -440,14 +352,13 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
     }
 
 }
-@Deprecated
-class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressListener {
 
-    private final static String TAG = "Multiple::Single";
+class RandomTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressListener {
+
+    private final static String TAG = "MultipleRandom::Single";
 
     private DownloadItem downloadItem;
     private DLTempConfig dlConfig;
-    private boolean supportBreakpoint;
 
     private LoadListener loadListener;
     private DownloadHelper downloadHelper;
@@ -457,26 +368,21 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
 
     private long breakPoint;
 
-    protected SingleTask(DownloadItem downloadItem) {
+    protected RandomTask(DownloadItem downloadItem) {
         this.downloadItem = downloadItem;
     }
 
-    SingleTask withDLTempConfig(DLTempConfig config) {
+    RandomTask withDLTempConfig(DLTempConfig config) {
         this.dlConfig = config;
         return this;
     }
 
-    SingleTask supportBreakpoint() {
-        supportBreakpoint = true;
-        return this;
-    }
-
-    SingleTask withLoadListener(LoadListener loadListener) {
+    RandomTask withLoadListener(LoadListener loadListener) {
         this.loadListener = loadListener;
         return this;
     }
 
-    SingleTask withSpaceGuard(SpaceGuard guard) {
+    RandomTask withSpaceGuard(SpaceGuard guard) {
         this.spaceGuard = guard;
         return this;
     }
@@ -489,37 +395,14 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
     public DLTempConfig call() throws Exception {
 
         String tn = Thread.currentThread().getName();
-
-        /**
-         * 属于当前 task 的 part file 已经下载完成，则无需下载
-         */
-        File partFile = new File(dlConfig.filePath);
-        if (partFile.exists() && partFile.isFile()){
-            Log.w(TAG, tn + " call: part file > " + partFile.getName() + " exist.");
-            long dlength = dlConfig.end - dlConfig.start + 1;
-            if (dlength == partFile.length()){
-                Log.d(TAG, "call: part file > " + partFile.getName() + " may be right, use it!");
-                breakPoint = dlength;
-                onProgress(downloadItem.getDlPath(), dlConfig.filePath, 0);
-                return dlConfig;
-            } else {
-                Log.w(TAG, "call: exsit part file is invalid, delete it > " + partFile.delete());
-            }
-        }
-
         this.downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath());
 
-        /**
-         * 是否断点续传
-         */
-        long written = supportBreakpoint ? downloadHelper.resumeBreakPoint(dlConfig.filePath) : 0;
-        long start = dlConfig.start;
-        if (written > 0) {
-            Log.w(TAG, tn + " call: resume break point written length = " + written);
-            start += written;
-            breakPoint = written;
-            onProgress(downloadItem.getDlPath(), dlConfig.filePath, 0);
+        if (dlConfig.written > 0) {
+            breakPoint = dlConfig.written;
+            Log.w(TAG, tn + " call: resume break point written length = " + breakPoint);
         }
+
+        long start = dlConfig.start + breakPoint;
         downloadHelper.withRange(start, dlConfig.end).created();
 
         long contentLength = downloadHelper.getContentLength();
@@ -531,15 +414,14 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         /**
          * 为什么要加 +1，可以查看 创建 config 的注释，range 的范围 是从 0 开始的，且头尾包含。
          */
-        if (contentLength != range + 1){
+        if (contentLength != range + 1) {
             throw new IOException("do not support Rang");
         }
 
-        long fileLength = dlConfig.end - start;
         /**
          * 如果空间不够，则 等待
          */
-        while (!spaceGuard.occupySize(fileLength - written)) {
+        while (!spaceGuard.occupySize(contentLength)) {
             synchronized (waitSpace) {
                 try {
                     waitSpace.wait();
@@ -550,7 +432,7 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         }
 
         try {
-            downloadHelper.withProgressListener(this).retrieveFile(dlConfig.filePath);
+            downloadHelper.withProgressListener(this).noRename().retrieveFileByRandom(dlConfig.filePath);
         } catch (IOException e) {
             Log.e(TAG, tn + " call: ", e);
             loadListener.onError(dlConfig, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
@@ -565,6 +447,7 @@ class SingleTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
     @Override
     public void onProgress(String dlPath, String filePath, long length) {
         dlConfig.written = breakPoint + length;
+
         if (loadListener != null) {
             loadListener.onUpdate(dlConfig, dlConfig.written);
         }

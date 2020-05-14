@@ -2,6 +2,34 @@
   {
     "item": {
       "version": "1",
+      "dlPath": "http://down-ww2.newasp.net/game/d/30/com.dotemu.ys2x.abc_2ba4d296.apk"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "86e80a50c16a6e54314331a72dc9861f"
+      },
+      {
+        "type": "sha-1",
+        "value": "fc7d4071d62dbb28dd59cdb7b4e4eecd9cc52969"
+      }
+    ]
+  },
+  {
+    "item": {
+      "version": "1",
+      "dlPath": "http://apps.sfcdn.org/apk/org.yy.cast.tv.148c3a5d57cb5f94ea579016d78cbea2.apk?response-content-type=application%2fvnd.android.package-archive"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "148c3a5d57cb5f94ea579016d78cbea2"
+      }
+    ]
+  },
+  {
+    "item": {
+      "version": "1",
       "dlPath": "http://tvappstore.aliapp.com/tvapp3/coolmiao/10013564_CIBN_CoolMiao_6.9.3.1_guanfangtongyong_6.9.3.1.apk"
     },
     "verifys": [

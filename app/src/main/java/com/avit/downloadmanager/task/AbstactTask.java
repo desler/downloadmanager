@@ -9,6 +9,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.avit.downloadmanager.data.BreakPointHelper;
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.GuardEvent;
@@ -28,17 +29,19 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
     final static String pathFormat = "%s" + File.separator + "%s";
 
-    protected DownloadItem downloadItem;
+    protected final DownloadItem downloadItem;
     protected TaskListener taskListener;
 
-    protected List<VerifyConfig> verifyConfigs;
-    protected List<SystemGuard> systemGuards;
+    protected final List<VerifyConfig> verifyConfigs;
+    protected final List<SystemGuard> systemGuards;
     /**
      * 关于 磁盘 空间大小的 guard，需要单独拎出来，因为 需要实时监控 磁盘空间大小。
      */
     protected SpaceGuard spaceGuard;
 
     protected boolean supportBreakpoint;
+    protected final BreakPointHelper breakPointHelper;
+
     protected boolean callbackOnMainThread;
 
     protected State state;
@@ -49,6 +52,8 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
         this.downloadItem = downloadItem;
         this.taskListener = EventDispatcher.DUMMY;
+
+        this.breakPointHelper = new BreakPointHelper();
 
         this.state = State.NONE;
     }
