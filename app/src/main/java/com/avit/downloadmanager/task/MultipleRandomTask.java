@@ -36,8 +36,8 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
      * 每个 线程的 最小下载单元  不小于 5M，小于 5M 则 为单线程下载
      */
     private final static int UNIT_SIZE = 5 * 1024 * 1024;
-
-    private final static String partPathFormat = "%s/%s.part.%d";
+    private final static String KEY_SUFFIX = ".multi";
+    private final static String KEY_TMP = ".tmp";
 
     private int maxThreads;
     private long unitSize;
@@ -158,9 +158,9 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
             dlTempConfigs[i] = createDLTempConfig(i, unitSize - 1);
         }
 
-        File fileTemp = new File(dlTempConfigs[0].filePath + ".tmp");
+        File fileTemp = new File(dlTempConfigs[0].filePath + KEY_TMP);
         if (supportBreakpoint && fileTemp.exists() && fileTemp.isFile()) {
-            List<DLTempConfig> configs = breakPointHelper.findByKey(downloadItem.getKey());
+            List<DLTempConfig> configs = breakPointHelper.findByKey(downloadItem.getKey() + KEY_SUFFIX);
             Log.d(TAG, "onStart: break point configs size = " + configs.size());
             for (int i = 0; i < configs.size(); ++i) {
                 DLTempConfig tmp = configs.get(i);
@@ -177,12 +177,12 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
     private DLTempConfig createDLTempConfig(int index, long span) {
 
         DLTempConfig dlTempConfig = new DLTempConfig();
-        dlTempConfig.key = downloadItem.getKey() + "#multi";
+        dlTempConfig.key = downloadItem.getKey() + KEY_SUFFIX;
 
         dlTempConfig.start = index * unitSize;
         dlTempConfig.end = dlTempConfig.start + span;
 
-        dlTempConfig.filePath = String.format(pathFormat + ".multi", downloadItem.getSavePath(), downloadItem.getFilename());
+        dlTempConfig.filePath = String.format(pathFormat + KEY_SUFFIX, downloadItem.getSavePath(), downloadItem.getFilename());
         dlTempConfig.seq = index;
 
         return dlTempConfig;
@@ -209,7 +209,7 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
         /**
          * 创建 固定大小的文件
          */
-        File file = new File(dlTempConfigs[0].filePath + ".tmp");
+        File file = new File(dlTempConfigs[0].filePath + KEY_TMP);
         RandomAccessFile accessFile = null;
         try {
             accessFile = new RandomAccessFile(file, "rw");
@@ -263,18 +263,19 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
         /**
          * 下载完成，删除断点记录
          */
-        Log.d(TAG, "onDownload: break point delete, " + breakPointHelper.deleteByKey(downloadItem.getKey()));
+        Log.d(TAG, "onDownload: break point delete, " + breakPointHelper.deleteByKey(downloadItem.getKey() + KEY_SUFFIX));
         /**
          * task all done.
          */
         if (file.exists() && file.isFile()) {
-            boolean res = file.renameTo(new File(String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename())));
+            String fullPath = String.format(pathFormat, downloadItem.getSavePath(), downloadItem.getFilename());
+            boolean res = file.renameTo(new File(fullPath));
             if (!res) {
                 Log.e(TAG, "onDownload: rename FAILED");
                 taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), "rename FAILED"));
                 return false;
             } else {
-                Log.d(TAG, "onDownload: rename to " + file.getName());
+                Log.d(TAG, "onDownload: rename to " + fullPath);
             }
         }
 
@@ -296,15 +297,15 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
         return true;
     }
 
-    private int prePercent;
+    private volatile int prePercent;
 
     @Override
     public void onUpdate(DLTempConfig dlTempConfig, long size) {
 
-        breakPointHelper.save(dlTempConfig);
 
         int percent = (int) (calculateProgress() * 100);
         if (percent != prePercent) {
+            breakPointHelper.save(dlTempConfig);
             taskListener.onUpdateProgress(getDownloadItem(), percent);
             prePercent = percent;
         }

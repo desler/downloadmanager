@@ -76,8 +76,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                  */
                 .withVerifyConfig(mock.configs);
 
-        DownloadManager.getInstance().submit(singleThreadTask);
-//        DownloadManager.getInstance().submitNow(singleThreadTask);
+//        DownloadManager.getInstance().submit(singleThreadTask);
+        DownloadManager.getInstance().submitNow(singleThreadTask);
 //        DownloadManager.getInstance().submitNow(new RetryTask(singleThreadTask));
     }
 
@@ -126,8 +126,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         DownloadMock[] downloadMocks = initMockData();
         for (DownloadMock mock : downloadMocks) {
             fillDownloadItem(mock.item);
-            if (mock.item.getFilename().startsWith("com.dotemu"))
-                continue;
+//            if (mock.item.getFilename().startsWith("com.dotemu"))
+//                continue;
 
             if (mock.verifys != null) {
                 VerifyConfig[] configs = new VerifyConfig[mock.verifys.length];

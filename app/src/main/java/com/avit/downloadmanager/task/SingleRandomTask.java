@@ -18,6 +18,9 @@ import java.util.List;
 
 public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements DownloadHelper.OnProgressListener {
 
+    private final static String KEY_SUFFIX = ".single";
+    private final static String KEY_TMP = ".tmp";
+
     private DLTempConfig dlConfig;
     private DownloadHelper downloadHelper;
     private long fileLength;
@@ -35,12 +38,12 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
     private DLTempConfig createDLTempConfig(long start, long length) {
 
         DLTempConfig dlTempConfig = new DLTempConfig();
-        dlTempConfig.key = downloadItem.getKey() + "#single";
+        dlTempConfig.key = downloadItem.getKey() + KEY_SUFFIX;
 
         dlTempConfig.start = start;
         dlTempConfig.end = length;
 
-        dlTempConfig.filePath = String.format(pathFormat + ".single", downloadItem.getSavePath(), downloadItem.getFilename());
+        dlTempConfig.filePath = String.format(pathFormat + KEY_SUFFIX, downloadItem.getSavePath(), downloadItem.getFilename());
         dlTempConfig.seq = 0;
 
         return dlTempConfig;
@@ -53,15 +56,15 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
 
         try {
             downloadHelper = new DownloadHelper().withPath(downloadItem.getDlPath());
-            String fileFullPath = String.format(pathFormat + ".single", downloadItem.getSavePath(), downloadItem.getFilename());
+            String fileFullPath = String.format(pathFormat + KEY_SUFFIX, downloadItem.getSavePath(), downloadItem.getFilename());
 
             /**
              * 是否需要断点续传, 且如果为了下载创建的临时文件存在，则 断点续传的数据才是真正有效的。
              */
-            File fileTemp = new File(fileFullPath + ".tmp");
+            File fileTemp = new File(fileFullPath + KEY_TMP);
             if (supportBreakpoint && fileTemp.exists() && fileTemp.isFile()) {
                 long writtenLength = 0;
-                List<DLTempConfig> list = breakPointHelper.findByKey(downloadItem.getKey());
+                List<DLTempConfig> list = breakPointHelper.findByKey(downloadItem.getKey() + KEY_SUFFIX);
                 if (!list.isEmpty()) {
                     DLTempConfig temp = list.get(0);
                     writtenLength = temp.written;
@@ -204,10 +207,9 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
     public void onProgress(String dlPath, String filePath, long length) {
         dlConfig.written = breakPoint + length;
 
-        breakPointHelper.save(dlConfig);
-
         int percent = (int) (dlConfig.written * 1.0f / fileLength * 100);
         if (percent != prePercent) {
+            breakPointHelper.save(dlConfig);
             taskListener.onUpdateProgress(downloadItem, percent);
             prePercent = percent;
         }
