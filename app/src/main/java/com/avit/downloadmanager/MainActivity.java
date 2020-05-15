@@ -1,11 +1,15 @@
 package com.avit.downloadmanager;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.avit.downloadmanager.data.DownloadItem;
@@ -15,7 +19,6 @@ import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.task.AbstactTask;
 import com.avit.downloadmanager.task.MultipleRandomTask;
 import com.avit.downloadmanager.task.SingleRandomTask;
-import com.avit.downloadmanager.task.SingleThreadTask;
 import com.avit.downloadmanager.task.TaskListener;
 import com.avit.downloadmanager.task.retry.RetryTask;
 import com.avit.downloadmanager.verify.IVerify;
@@ -116,6 +119,11 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
     }
 
     private APKInstallWatch apkInstallWatch;
+
+    /**
+     * 多线程 进度 刷新问题 还需要优化
+     * @param savedInstanceState
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -128,8 +136,8 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         DownloadMock[] downloadMocks = initMockData();
         for (DownloadMock mock : downloadMocks) {
             fillDownloadItem(mock.item);
-            if (mock.item.getFilename().startsWith("com.dotemu"))
-                continue;
+//            if (mock.item.getFilename().startsWith("com.dotemu"))
+//                continue;
 
             if (mock.verifys != null) {
                 VerifyConfig[] configs = new VerifyConfig[mock.verifys.length];
@@ -141,6 +149,18 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
 
             submitDownloadTask(mock);
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 100);
+            }
+        }
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
     @Override
