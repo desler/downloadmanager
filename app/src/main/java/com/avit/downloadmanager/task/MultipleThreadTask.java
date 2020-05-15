@@ -36,7 +36,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
     /**
      * 每个 线程的 最小下载单元  不小于 5M，小于 5M 则 为单线程下载
      */
-    private final static int UNIT_SIZE = 5 * 1024 * 1024;
+    private final static int UNIT_SIZE = 3 * 1024 * 1024;
 
     private final static String partPathFormat = "%s/%s.part.%d";
 
@@ -136,9 +136,13 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
 
         Log.d(TAG, "onStart: unit size = " + unitSize);
 
+        long endSize;
         long modSize = fileLength % unitSize;
-        if (modSize != 0) {
+        if (modSize != 0 && count == 0) {
             count = count + 1;
+            endSize = modSize - 1;
+        } else {
+            endSize = unitSize + modSize - 1;
         }
 
         Log.d(TAG, "onStart: thread num = " + count);
@@ -149,7 +153,7 @@ public final class MultipleThreadTask extends AbstactTask<MultipleThreadTask> im
          * ②，最后一个 下载单元，不 减1，之所以不会出错，是因为文件只有这么长，因此返回了实际的长度，
          * 但实际上之前的计算方式是错的
          */
-        DLTempConfig tempConfig = createDLTempConfig(count - 1, modSize != 0 ? (modSize - 1) : (unitSize - 1));
+        DLTempConfig tempConfig = createDLTempConfig(count - 1, endSize);
         if (tempConfig.end + 1 != fileLength) {
             Log.e(TAG, "onStart: calculate error " + (tempConfig.end + 1));
             return false;
