@@ -1,14 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
+    <Button
+        android:id="@+id/getFocus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!" />
+        android:text="焦点在我这里" />
 
-</FrameLayout>
+    <Button
+        android:id="@+id/getFocus1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="焦点在我这里" />
+
+    <com.avit.downloadmanager.MarqueeTextView
+        android:id="@+id/marquee"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@android:color/holo_red_light"
+        android:ellipsize="marquee"
+        android:padding="5dp"
+        android:focusableInTouchMode="false"
+        android:focusable="false"
+        android:text="北宋皇帝赵祯（王凯饰）得知将自己养大的当朝太后刘娥并非亲生母亲" />
+
+</LinearLayout>

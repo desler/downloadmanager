@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewTreeObserver;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -55,9 +57,9 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
-//        AbstactTask singleThreadTask = new MultipleRandomTask(downloadItem)
+        AbstactTask singleThreadTask = new MultipleRandomTask(downloadItem)
 //        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
-        AbstactTask singleThreadTask = new SingleRandomTask(downloadItem)
+//        AbstactTask singleThreadTask = new SingleRandomTask(downloadItem)
 //        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
@@ -129,6 +131,14 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener(new ViewTreeObserver.OnGlobalFocusChangeListener() {
+            @Override
+            public void onGlobalFocusChanged(View oldFocus, View newFocus) {
+                Log.d(TAG, "onGlobalFocusChanged: " + oldFocus);
+                Log.d(TAG, "onGlobalFocusChanged: " + newFocus);
+            }
+        });
+
         apkInstallWatch = new APKInstallWatch(this);
 
         SpaceGuard.initFromSystem(this, null);
@@ -147,7 +157,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                 mock.configs = configs;
             }
 
-            submitDownloadTask(mock);
+//            submitDownloadTask(mock);
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -155,6 +165,9 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                 requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 100);
             }
         }
+
+        MarqueeTextView marqueeTextView = findViewById(R.id.marquee);
+        marqueeTextView.setSpeed(3 * 30);
 
     }
 
