@@ -181,7 +181,7 @@ public final class DownloadManager {
             }
 
             if (downloadManager.sequentialExecutor.isExist(task)){
-                return downloadManager.immediatelyExecutor.getTaskState(task);
+                return downloadManager.sequentialExecutor.getTaskState(task);
             }
 
             return task.getState();
