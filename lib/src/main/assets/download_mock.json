@@ -1,0 +1,118 @@
+[
+  {
+    "item": {
+      "version": "1",
+      "dlPath": "http://down-ww2.newasp.net/game/d/30/com.dotemu.ys2x.abc_2ba4d296.apk"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "86e80a50c16a6e54314331a72dc9861f"
+      },
+      {
+        "type": "sha-1",
+        "value": "fc7d4071d62dbb28dd59cdb7b4e4eecd9cc52969"
+      }
+    ]
+  },
+  {
+    "item": {
+      "version": "1",
+      "dlPath": "http://apps.sfcdn.org/apk/org.yy.cast.tv.148c3a5d57cb5f94ea579016d78cbea2.apk?response-content-type=application%2fvnd.android.package-archive"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "148c3a5d57cb5f94ea579016d78cbea2"
+      }
+    ]
+  },
+  {
+    "item": {
+      "version": "1",
+      "dlPath": "http://tvappstore.aliapp.com/tvapp3/coolmiao/10013564_CIBN_CoolMiao_6.9.3.1_guanfangtongyong_6.9.3.1.apk"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "e4c150ffade514f419485db2232c54ff"
+      },
+      {
+        "type": "crc32",
+        "value": "841df0c6"
+      },
+      {
+        "type": "sha-512",
+        "value": "81d54caa1d39b0d0b66e7d58766a783df45478e4b2848c3aa0efc50a60d23d7efa6eb7a222d2b094850f883922ab77f08af204e319ab111768719408d4819b87"
+      }
+    ]
+  },
+  {
+    "item": {
+      "version": "1",
+      "dlPath": "http://app.iqiyi.com/tv/apk/qiyiguo_official10.4.3.apk"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "088d20bfe8bbfc68cefa40a0ae29d236"
+      },
+      {
+        "type": "crc32",
+        "value": "d7b73a1e"
+      },
+      {
+        "type": "sha-512",
+        "value": "54807cbda0eb41d2bf859f501194b5dcb13661c676904dd9bd290c41973e1610ef25a079c5beb066cde6b7623f376e26e4e0e952507a1ff73eae3c2df8805859"
+      }
+    ]
+  },
+  {
+    "item": {
+      "version": "1",
+      "dlPath": "http://27.22.54.138/app.znds.com/update/2020-03-25/dangbeimarket_4.2.3_230_znds.apk"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "04c995a0752c7f9e05012eacaf1b5052"
+      },
+      {
+        "type": "crc32",
+        "value": "bcbfb660"
+      },
+      {
+        "type": "sha-512",
+        "value": "06216aacac8b530b05018a11daf4c7e5a1cee3fe50827858b54d41cbf0ed70d772cc56f02577cfe365ecbbb8fc3bb67e450fa1f95ae1bb8d26dea8435273aa30"
+      }
+    ]
+  },
+  {
+    "item": {
+      "version": "1",
+      "dlPath": "http://up.cp33.ott.cibntv.net/apk/cibnvst/updateDownload/BMJCQLDKHWQ6SFYSCTJH.apk"
+    },
+    "verifys": [
+      {
+        "type": "md5",
+        "value": "0ee6ab8fca79980401b7cff61c0a889a"
+      },
+      {
+        "type": "crc32",
+        "value": "18333d74"
+      },
+      {
+        "type": "sha-1",
+        "value": "11203b67d4d3aef0a8ddf8ddc1f4b5f6bb354dff"
+      },
+      {
+        "type": "sha-224",
+        "value": "bfd4f4f024264372404f98185c8f2866f9ecf6cb853be3f2a394ed2b"
+      },
+      {
+        "type": "sha-384",
+        "value": "ee29bfa37612e6b28adb5ac0d89b99d6013e7f2970171f0902489ad653cb959b6c9e5f24c99dfa0d2f94d85ffa07c4a5"
+      }
+    ]
+  }
+]
