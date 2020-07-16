@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import com.avit.downloadmanager.data.BreakPointHelper;
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.error.Error;
+import com.avit.downloadmanager.executor.AbsExecutor;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.guard.SystemGuard;
@@ -28,6 +29,8 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
     protected String TAG = "AbstactTask";
 
     final static String pathFormat = "%s" + File.separator + "%s";
+
+    private AbsExecutor absExecutor;
 
     protected final DownloadItem downloadItem;
     protected TaskListener taskListener;
@@ -56,6 +59,15 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         this.breakPointHelper = new BreakPointHelper();
 
         this.state = State.NONE;
+    }
+
+    @Override
+    public void setExecutor(AbsExecutor executor) {
+        this.absExecutor = executor;
+    }
+
+    public final void submitSelf(){
+        this.absExecutor.submit(this);
     }
 
     public TASK withListener(TaskListener listener) {
@@ -257,6 +269,21 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
             return;
         } else {
             Log.w(TAG, "start: state = " + state.name());
+        }
+    }
+
+    @Override
+    public void resume() {
+        if (!isValidState()) {
+            return;
+        }
+        State state = getState();
+        if (state == State.PAUSE) {
+            this.state = State.START;
+            submitSelf();
+            return;
+        } else {
+            Log.w(TAG, "resume: state = " + state.name());
         }
     }
 

@@ -26,7 +26,7 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
     private long fileLength;
 
     private final Object spaceWait = new Object();
-    private final Object stateWait = new Object();
+//    private final Object stateWait = new Object();
 
     private long breakPoint;
 
@@ -180,6 +180,9 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
             taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
         } catch (TaskException e) {
             taskListener.onStop(downloadItem, 0, e.getMessage());
+        } catch (PauseExecute pauseExecute){
+            taskListener.onPause(downloadItem, prePercent);
+            throw pauseExecute;
         } finally {
             Log.d(TAG, "onDownload: always release");
             downloadHelper.release();
@@ -216,15 +219,17 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
             prePercent = percent;
         }
 
-        while (getState() == State.PAUSE) {
+        if (getState() == State.PAUSE) {
             Log.d(TAG, "onProgress: state = " + getState().name());
-            synchronized (stateWait) {
-                try {
-                    stateWait.wait();
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "onProgress: ", e);
-                }
-            }
+//            taskListener.onPause(downloadItem, percent);
+//            synchronized (stateWait) {
+//                try {
+//                    stateWait.wait();
+//                } catch (InterruptedException e) {
+//                    Log.e(TAG, "onProgress: ", e);
+//                }
+//            }
+            throw new PauseExecute("oops, task.key = " + getDownloadItem().getKey() + " is paused!");
         }
 
         if (getState() == State.RELEASE) {
@@ -234,7 +239,7 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
     }
 
     private void notifyState() {
-        stateWait.notifyAll();
+//        stateWait.notifyAll();
     }
 
     private void notifySpace() {

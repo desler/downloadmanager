@@ -24,6 +24,8 @@ public abstract class AbsExecutor implements Callable<Boolean> {
         return futureTasks.putIfAbsent(key, value);
     }
 
+    public abstract AbsExecutor submit(ITask task);
+
     public boolean isFinish(ITask task){
 
         String key = task.getDownloadItem().getKey();

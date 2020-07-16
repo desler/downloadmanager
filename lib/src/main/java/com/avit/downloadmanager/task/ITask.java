@@ -1,6 +1,7 @@
 package com.avit.downloadmanager.task;
 
 import com.avit.downloadmanager.data.DownloadItem;
+import com.avit.downloadmanager.executor.AbsExecutor;
 import com.avit.downloadmanager.guard.IGuardListener;
 import com.avit.downloadmanager.verify.VerifyConfig;
 
@@ -21,6 +22,8 @@ public interface ITask extends Callable<Boolean>, IGuardListener {
 
     void pause();
 
+    void resume();
+
     void stop();
 
     State getState();
@@ -28,4 +31,6 @@ public interface ITask extends Callable<Boolean>, IGuardListener {
     enum State {
         NONE, START, LOADING, PAUSE, ERROR, COMPLETE, RELEASE
     }
+
+    void setExecutor(AbsExecutor executor);
 }

@@ -6,8 +6,9 @@ import androidx.annotation.NonNull;
 import androidx.core.util.Pair;
 
 import com.avit.downloadmanager.task.ITask;
-import com.avit.downloadmanager.task.retry.RetryTask;
+import com.avit.downloadmanager.task.PauseExecute;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
@@ -37,8 +38,25 @@ public final class SequentialExecutor extends AbsExecutor {
     public SequentialExecutor() {
     }
 
-    public SequentialExecutor submit(ITask task) {
-        FutureTask futureTask = (FutureTask<Boolean>) seqExecutor.submit(task);
+    @Override
+    public SequentialExecutor submit(final ITask task) {
+
+        task.setExecutor(this);
+
+        FutureTask futureTask = (FutureTask<Boolean>) seqExecutor.submit(new Callable<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+                try {
+                    return task.call();
+                } catch (PauseExecute pauseExecute) {
+                    Log.w(TAG, "call: " + pauseExecute.getMessage());
+                } catch (Throwable e) {
+                    Log.e(TAG, "call: ", e);
+                }
+                return Boolean.FALSE;
+            }
+        });
+
         putIfAbsent(task.getDownloadItem().getKey(), Pair.<ITask, FutureTask<Boolean>>create(task, futureTask));
         return this;
     }

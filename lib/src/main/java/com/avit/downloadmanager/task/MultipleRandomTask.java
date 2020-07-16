@@ -65,7 +65,7 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
             return thread;
         }
     });
-    private final Object stateWait = new Object();
+//    private final Object stateWait = new Object();
 
     public MultipleRandomTask(DownloadItem downloadItem) {
         super(downloadItem);
@@ -251,6 +251,9 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
                 hasError = true;
                 taskListener.onStop(downloadItem, 0, e.getMessage());
                 break;
+            } catch (PauseExecute pauseExecute){
+                taskListener.onPause(downloadItem, prePercent);
+                throw pauseExecute;
             } catch (Throwable e) {
                 Log.e(TAG, "onDownload: ", e);
                 hasError = true;
@@ -314,15 +317,17 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
             prePercent = percent;
         }
 
-        while (getState() == State.PAUSE) {
+        if (getState() == State.PAUSE) {
             Log.d(TAG, "onUpdate: state = " + getState().name());
-            synchronized (stateWait) {
-                try {
-                    stateWait.wait();
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "onUpdate: ", e);
-                }
-            }
+//            taskListener.onPause(getDownloadItem(), percent);
+//            synchronized (stateWait) {
+//                try {
+//                    stateWait.wait();
+//                } catch (InterruptedException e) {
+//                    Log.e(TAG, "onUpdate: ", e);
+//                }
+//            }
+            throw new PauseExecute("oops, task.key = " + getDownloadItem().getKey() + " is paused!");
         }
 
         if (getState() == State.RELEASE) {
@@ -361,7 +366,7 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
     }
 
     private void notifyState() {
-        stateWait.notifyAll();
+//        stateWait.notifyAll();
     }
 
 }

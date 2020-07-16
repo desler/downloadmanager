@@ -6,13 +6,16 @@ import androidx.annotation.NonNull;
 
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.error.Error;
+import com.avit.downloadmanager.executor.AbsExecutor;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.task.AbstactTask;
 import com.avit.downloadmanager.task.ITask;
+import com.avit.downloadmanager.task.PauseExecute;
 import com.avit.downloadmanager.task.TaskListener;
 import com.avit.downloadmanager.verify.VerifyConfig;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
@@ -38,6 +41,8 @@ public final class RetryTask implements ITask {
             return thread;
         }
     });
+
+    private AbsExecutor absExecutor;
 
     private final ITask task;
     private final TaskListener orgTaskListener;
@@ -105,6 +110,14 @@ public final class RetryTask implements ITask {
                 result = futureTask.get();
                 if (result != null && result.booleanValue()) {
                     break;
+                }
+            } catch (ExecutionException ex){
+                Throwable throwable = ex.getCause();
+                if (throwable != null && throwable instanceof PauseExecute){
+                    throw (PauseExecute)throwable;
+                } else {
+                    Log.e(TAG, "call: ", ex);
+                    message = ex.getMessage();
                 }
             } catch (Throwable e) {
                 Log.e(TAG, "call: ", e);
@@ -174,8 +187,36 @@ public final class RetryTask implements ITask {
     }
 
     @Override
+    public void setExecutor(AbsExecutor executor) {
+        this.absExecutor = executor;
+    }
+
+    @Override
     public void pause() {
         task.pause();
+    }
+
+    @Override
+    public void resume() {
+
+        State state = task.getState();
+        if (!isValidState(state)) {
+            return;
+        }
+
+        if (state == State.PAUSE) {
+            this.absExecutor.submit(this);
+            return;
+        } else {
+            Log.e(TAG, "resume: state = " + state.name());
+        }
+    }
+
+    private boolean isValidState(State state) {
+        if (state == State.RELEASE || state == State.ERROR)
+            throw new IllegalStateException("" + this + " already " + state.name());
+
+        return true;
     }
 
     @Override
