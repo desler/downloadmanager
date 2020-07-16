@@ -1,4 +1,4 @@
-package com.avit.downloadmanager;
+package com.avit.downloadmanager.test;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -14,6 +14,9 @@ import android.view.ViewTreeObserver;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.avit.downloadmanager.DownloadManager;
+import com.avit.downloadmanager.MarqueeTextView;
+import com.avit.downloadmanager.test.R;
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.NetworkGuard;
