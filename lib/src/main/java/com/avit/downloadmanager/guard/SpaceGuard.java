@@ -414,14 +414,10 @@ final class MountDir {
      */
     static String path2MountDir(String path) {
 
-        String maxPath = null;
+        String maxPath = "";
         for (String dir : dirCache) {
             if (!path.startsWith(dir + File.separator)) {
                 continue;
-            }
-
-            if (TextUtils.isEmpty(maxPath)) {
-                maxPath = dir;
             }
 
             if (dir.length() > maxPath.length()) {
