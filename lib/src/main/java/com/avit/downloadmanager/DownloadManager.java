@@ -41,16 +41,28 @@ public final class DownloadManager {
      * 下载任务 立即执行
      * @param task
      */
-    public void submitNow(ITask task){
+    public boolean submitNow(ITask task) {
+        if (taskManager != null && taskManager.isExist(task)) {
+            Log.w(TAG, "submitNow: task.key = " + task.getDownloadItem().getKey() + " already submit.");
+            return false;
+        }
+
         immediatelyExecutor.submit(task);
+        return true;
     }
 
     /**
      * 下载 任务 按顺序 逐个 执行
      * @param task
      */
-    public void submit(ITask task){
+    public boolean submit(ITask task) {
+        if (taskManager != null && taskManager.isExist(task)) {
+            Log.w(TAG, "submit: task.key = " + task.getDownloadItem().getKey() + " already submit.");
+            return false;
+        }
+
         sequentialExecutor.submit(task);
+        return true;
     }
 
     public DownloadManager enableTaskManager() {
