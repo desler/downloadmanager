@@ -3,6 +3,7 @@ package com.avit.downloadmanager.executor;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.util.Pair;
 
 import com.avit.downloadmanager.task.ITask;
 import com.avit.downloadmanager.task.retry.RetryTask;
@@ -33,18 +34,13 @@ public final class SequentialExecutor extends AbsExecutor {
         }
     });
 
-    private FutureTask<Boolean> futureTask;
-
     public SequentialExecutor() {
     }
 
     public SequentialExecutor submit(ITask task) {
-        futureTask = (FutureTask<Boolean>) seqExecutor.submit(task);
+        FutureTask futureTask = (FutureTask<Boolean>) seqExecutor.submit(task);
+        putIfAbsent(task.getDownloadItem().getKey(), Pair.<ITask, FutureTask<Boolean>>create(task, futureTask));
         return this;
     }
 
-    @Override
-    public Boolean call() throws Exception {
-        return null;
-    }
 }
