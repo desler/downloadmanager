@@ -2,7 +2,6 @@ package com.avit.downloadmanager.task;
 
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.guard.IGuardListener;
-import com.avit.downloadmanager.task.retry.RetryConfig;
 import com.avit.downloadmanager.verify.VerifyConfig;
 
 import java.util.List;

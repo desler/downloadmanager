@@ -57,10 +57,16 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         SpaceGuard spaceGuard = SpaceGuard.createSpaceGuard(this, downloadItem.getSavePath());
         Log.d(TAG, "submitDownloadTask: spaceGuard " + spaceGuard);
 
-        AbstactTask singleThreadTask = new MultipleRandomTask(downloadItem)
-//        AbstactTask singleThreadTask = new MultipleThreadTask(downloadItem)
-//        AbstactTask singleThreadTask = new SingleRandomTask(downloadItem)
-//        AbstactTask singleThreadTask = new SingleThreadTask(downloadItem)
+        DownloadManager downloadManager = DownloadManager.getInstance();
+        /**
+         * 如果需对 task 状态进行管理 则 需要调用 enableTaskManager
+         */
+        downloadManager.enableTaskManager();
+
+        /**
+         * 单线程下载
+         */
+        AbstactTask randomTask = new SingleRandomTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -82,10 +88,56 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                  */
                 .withVerifyConfig(mock.configs);
 
-//        DownloadManager.getInstance().submit(singleThreadTask);
-//        DownloadManager.getInstance().submitNow(singleThreadTask);
-        DownloadManager.getInstance().submit(new RetryTask(singleThreadTask));
-//        DownloadManager.getInstance().submitNow(new RetryTask(singleThreadTask));
+        if (downloadManager.isExist(randomTask)){
+            Log.w(TAG, "submitDownloadTask: task.key = " + randomTask.getDownloadItem().getKey() +" already in downloading");
+        }
+
+        DownloadManager.getInstance().submit(randomTask);
+
+        /**
+         * 多线程下载
+         */
+        randomTask = new MultipleRandomTask(downloadItem)
+                /**
+                 * 添加 网络 及 磁盘空间 管控
+                 */
+                .withGuard(networkGuard, spaceGuard)
+                /**
+                 * 在主线程中，回调 监听
+                 */
+                .callbackOnMainThread()
+                /**
+                 * 支持 断点 续传
+                 */
+                .supportBreakpoint()
+                /**
+                 * 添加监听
+                 */
+                .withListener(this)
+                /**
+                 * 添加下载完成后，对文件的校验，支持 md5 crc32 sha 序列
+                 */
+                .withVerifyConfig(mock.configs)
+                /**
+                 * 最多 同时 三个线程下载
+                 */
+                .withNumThreads(3);
+
+        if (downloadManager.isExist(randomTask)){
+            Log.w(TAG, "submitDownloadTask: task.key = " + randomTask.getDownloadItem().getKey() +" already in downloading");
+        }
+
+        DownloadManager.getInstance().submit(randomTask);
+
+        /**
+         * 引入重试机制
+         */
+        RetryTask retryTask = new RetryTask(randomTask);
+        if (downloadManager.isExist(randomTask)){
+            Log.w(TAG, "submitDownloadTask: task.key = " + randomTask.getDownloadItem().getKey() +" already in downloading");
+        }
+
+        DownloadManager.getInstance().submit(retryTask);
     }
 
     private DownloadMock[] initMockData() {
