@@ -184,7 +184,7 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
 
         long begin = System.currentTimeMillis();
 
-        while (!spaceGuard.occupySize(fileLength - breakPoint)) {
+        while (spaceGuard != null && !spaceGuard.occupySize(fileLength - breakPoint)) {
             Log.w(TAG, "onDownload: wait ");
             synchronized (spaceWait) {
                 try {

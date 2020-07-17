@@ -519,7 +519,7 @@ class RandomTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
             /**
              * 如果空间不够，则 等待
              */
-            while (!spaceGuard.occupySize(contentLength)) {
+            while (spaceGuard != null && !spaceGuard.occupySize(contentLength)) {
                 synchronized (waitSpace) {
                     try {
                         waitSpace.wait();
