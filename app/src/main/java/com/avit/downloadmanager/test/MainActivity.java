@@ -15,17 +15,13 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.avit.downloadmanager.DownloadManager;
-import com.avit.downloadmanager.MarqueeTextView;
-import com.avit.downloadmanager.test.R;
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
-import com.avit.downloadmanager.task.AbstactTask;
+import com.avit.downloadmanager.task.ITask;
 import com.avit.downloadmanager.task.MultipleRandomTask;
-import com.avit.downloadmanager.task.SingleRandomTask;
 import com.avit.downloadmanager.task.TaskListener;
-import com.avit.downloadmanager.task.retry.RetryTask;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyConfig;
 import com.avit.downloadmanager.watch.APKInstallWatch;
@@ -38,6 +34,7 @@ import java.io.InputStreamReader;
 public class MainActivity extends AppCompatActivity implements TaskListener {
 
     private final static String TAG = "MainActivity";
+    private ITask currentTask;
 
     private void fillDownloadItem(DownloadItem item) {
 
@@ -49,7 +46,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                 .withFilename(filename);
     }
 
-    private void submitDownloadTask(DownloadMock mock) {
+    private ITask submitDownloadTask(DownloadMock mock) {
         /**
          * 创建 下载需要使用的 数据单元
          */
@@ -69,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         /**
          * 单线程下载
          */
-        AbstactTask randomTask = new SingleRandomTask(downloadItem)
+        ITask randomTask = new MultipleRandomTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -95,52 +92,11 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
             Log.w(TAG, "submitDownloadTask: task.key = " + randomTask.getDownloadItem().getKey() +" already in downloading");
         }
 
-        DownloadManager.getInstance().submit(randomTask);
-
-        /**
-         * 多线程下载
-         */
-        randomTask = new MultipleRandomTask(downloadItem)
-                /**
-                 * 添加 网络 及 磁盘空间 管控
-                 */
-                .withGuard(networkGuard, spaceGuard)
-                /**
-                 * 在主线程中，回调 监听
-                 */
-                .callbackOnMainThread()
-                /**
-                 * 支持 断点 续传
-                 */
-                .supportBreakpoint()
-                /**
-                 * 添加监听
-                 */
-                .withListener(this)
-                /**
-                 * 添加下载完成后，对文件的校验，支持 md5 crc32 sha 序列
-                 */
-                .withVerifyConfig(mock.configs)
-                /**
-                 * 最多 同时 三个线程下载
-                 */
-                .withNumThreads(3);
-
-        if (downloadManager.isExist(randomTask)){
-            Log.w(TAG, "submitDownloadTask: task.key = " + randomTask.getDownloadItem().getKey() +" already in downloading");
-        }
+//        randomTask = new RetryTask(randomTask);
 
         DownloadManager.getInstance().submit(randomTask);
 
-        /**
-         * 引入重试机制
-         */
-        RetryTask retryTask = new RetryTask(randomTask);
-        if (downloadManager.isExist(randomTask)){
-            Log.w(TAG, "submitDownloadTask: task.key = " + randomTask.getDownloadItem().getKey() +" already in downloading");
-        }
-
-        DownloadManager.getInstance().submit(retryTask);
+        return randomTask;
     }
 
     private DownloadMock[] initMockData() {
@@ -201,8 +157,11 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         DownloadMock[] downloadMocks = initMockData();
         for (DownloadMock mock : downloadMocks) {
             fillDownloadItem(mock.item);
-//            if (mock.item.getFilename().startsWith("com.dotemu"))
-//                continue;
+            if (mock.item.getFilename().startsWith("com.dotemu"))
+                continue;
+
+            if (mock.item.getFilename().startsWith("org.yy.cast.tv"))
+                continue;
 
             if (mock.verifys != null) {
                 VerifyConfig[] configs = new VerifyConfig[mock.verifys.length];
@@ -212,7 +171,11 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
                 mock.configs = configs;
             }
 
-//            submitDownloadTask(mock);
+            ITask iTask = submitDownloadTask(mock);
+            if (currentTask != null) {
+                break;
+            }
+            currentTask = iTask;
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -221,9 +184,29 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
             }
         }
 
-        MarqueeTextView marqueeTextView = findViewById(R.id.marquee);
-        marqueeTextView.setSpeed(3 * 30);
+//        MarqueeTextView marqueeTextView = findViewById(R.id.marquee);
+//        marqueeTextView.setSpeed(3 * 30);
 
+    }
+
+    public void onClick(View v) {
+        Log.d(TAG, "onClick: " + v);
+        if (currentTask == null) {
+            return;
+        }
+        try {
+            switch (v.getId()) {
+                case R.id.pause:
+                    currentTask.pause();
+                    break;
+                case R.id.resume:
+                    currentTask.resume();
+                    break;
+            }
+        } catch (Throwable throwable) {
+            Log.e(TAG, "onClick: ", throwable);
+            currentTask.release();
+        }
     }
 
     @Override
@@ -234,6 +217,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
     @Override
     protected void onDestroy() {
         apkInstallWatch.release();
+        DownloadManager.getInstance().release();
         super.onDestroy();
     }
 
@@ -244,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
      */
     @Override
     public void onStart(DownloadItem item) {
-
+        Log.d(TAG, "onStart: " + item.getFilename());
     }
 
     /**
@@ -289,7 +273,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
      */
     @Override
     public void onPause(DownloadItem item, int percent) {
-
+        Log.d(TAG, "onPause: " + item.getFilename() + " -> " + percent);
     }
 
     /**
@@ -300,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
      */
     @Override
     public void onError(DownloadItem item, Error error) {
-
+        Log.d(TAG, "onError: " + item.getFilename() + " -> " + Error.dump(error));
     }
 
     /**
@@ -312,7 +296,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
      */
     @Override
     public void onStop(DownloadItem item, int reason, String message) {
-
+        Log.d(TAG, "onStop: " + item.getFilename() + " -> " + message);
     }
 }
 
