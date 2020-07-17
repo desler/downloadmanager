@@ -10,15 +10,15 @@ import com.avit.downloadmanager.executor.AbsExecutor;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.task.AbstactTask;
 import com.avit.downloadmanager.task.ITask;
-import com.avit.downloadmanager.task.PauseExecute;
+import com.avit.downloadmanager.task.exception.PauseExecute;
 import com.avit.downloadmanager.task.TaskListener;
+import com.avit.downloadmanager.task.exception.FallbackException;
 import com.avit.downloadmanager.verify.VerifyConfig;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +63,7 @@ public final class RetryTask implements ITask {
         orgTaskListener = ts.getTaskListener();
 
         ts.withListener(new ProxyTaskListener());
+        ts.setParent(this);
     }
 
     @Override
@@ -111,16 +112,26 @@ public final class RetryTask implements ITask {
                 if (result != null && result.booleanValue()) {
                     break;
                 }
-            } catch (ExecutionException ex){
+            } catch (ExecutionException ex) {
                 Throwable throwable = ex.getCause();
-                if (throwable != null && throwable instanceof PauseExecute){
-                    throw (PauseExecute)throwable;
+                if (throwable != null) {
+                    if (throwable instanceof PauseExecute) {
+                        Log.w(TAG, "call: " + throwable.getMessage());
+                        throw (PauseExecute) throwable;
+                    } else if (throwable instanceof FallbackException) {
+                        Log.w(TAG, "call: " + throwable.getMessage());
+                        ITask ft = task.fallback();
+                        if (ft != null && ft != task) {
+                            Log.w(TAG, "call: will fall back to singleTask = " + ft);
+                        }
+                    } else {
+                        message = ex.getMessage();
+                    }
                 } else {
-                    Log.e(TAG, "call: ", ex);
-                    message = ex.getMessage();
+                    Log.e(TAG, "call ExecutionException: ", ex);
                 }
             } catch (Throwable e) {
-                Log.e(TAG, "call: ", e);
+                Log.e(TAG, "call Throwable: ", e);
                 message = e.getMessage();
             }
             Log.d(TAG, "call: cost = " + (System.currentTimeMillis() - begin));
@@ -169,6 +180,7 @@ public final class RetryTask implements ITask {
     public void release() {
         task.release();
         retryService.shutdown();
+        Log.w(TAG, "release: " + this);
     }
 
     @Override
@@ -184,6 +196,21 @@ public final class RetryTask implements ITask {
     @Override
     public State getState() {
         return task.getState();
+    }
+
+    @Override
+    public ITask fallback() {
+        return this;
+    }
+
+    @Override
+    public boolean hasParent() {
+        return false;
+    }
+
+    @Override
+    public ITask getParent() {
+        return null;
     }
 
     @Override
@@ -208,7 +235,7 @@ public final class RetryTask implements ITask {
             this.absExecutor.submit(this);
             return;
         } else {
-            Log.e(TAG, "resume: state = " + state.name());
+            Log.w(TAG, "resume: state = " + state.name());
         }
     }
 
@@ -256,8 +283,8 @@ public final class RetryTask implements ITask {
             if (isLastRetry()) {
                 orgTaskListener.onError(item, error);
             } else {
-                error.dump();
                 Log.w(TAG, "onError: intercept by ProxyTaskListener " + error);
+                error.dump();
             }
         }
 

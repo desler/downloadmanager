@@ -32,9 +32,20 @@ public final class DLTempConfig extends LitePalSupport {
      */
     public String filePath;
 
+    /**
+     * content Length
+     */
+    public long contentLength;
+
     @NonNull
     @Override
     public String toString() {
         return String.format("[key = %s, seq = %d]", key, seq);
+    }
+
+    public final void clearBreakpoint(){
+        start = 0;
+        end = contentLength - 1;
+        written = 0;
     }
 }

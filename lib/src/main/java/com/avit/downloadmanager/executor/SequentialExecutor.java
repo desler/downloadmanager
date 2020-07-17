@@ -6,7 +6,8 @@ import androidx.annotation.NonNull;
 import androidx.core.util.Pair;
 
 import com.avit.downloadmanager.task.ITask;
-import com.avit.downloadmanager.task.PauseExecute;
+import com.avit.downloadmanager.task.exception.FallbackException;
+import com.avit.downloadmanager.task.exception.PauseExecute;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -50,6 +51,8 @@ public final class SequentialExecutor extends AbsExecutor {
                     return task.call();
                 } catch (PauseExecute pauseExecute) {
                     Log.w(TAG, "call: " + pauseExecute.getMessage());
+                } catch (FallbackException fex) {
+                    Log.w(TAG, "call: " + fex.getMessage());
                 } catch (Throwable e) {
                     Log.e(TAG, "call: ", e);
                 }

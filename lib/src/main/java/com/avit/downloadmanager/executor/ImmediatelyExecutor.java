@@ -5,7 +5,8 @@ import android.util.Log;
 import androidx.core.util.Pair;
 
 import com.avit.downloadmanager.task.ITask;
-import com.avit.downloadmanager.task.PauseExecute;
+import com.avit.downloadmanager.task.exception.FallbackException;
+import com.avit.downloadmanager.task.exception.PauseExecute;
 
 import java.util.concurrent.FutureTask;
 
@@ -29,6 +30,8 @@ public final class ImmediatelyExecutor extends AbsExecutor {
                     futureTask.run();
                 } catch (PauseExecute pauseExecute) {
                     Log.w(TAG, "call: " + pauseExecute.getMessage());
+                } catch (FallbackException fex) {
+                    Log.w(TAG, "call: " + fex.getMessage());
                 } catch (Throwable e) {
                     Log.e(TAG, "run: ", e);
                 }

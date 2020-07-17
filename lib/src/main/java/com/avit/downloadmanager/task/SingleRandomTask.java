@@ -2,6 +2,7 @@ package com.avit.downloadmanager.task;
 
 import android.util.Log;
 
+import com.avit.downloadmanager.DownloadManager;
 import com.avit.downloadmanager.data.DLTempConfig;
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.download.DownloadHelper;
@@ -9,6 +10,8 @@ import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.guard.IGuard;
 import com.avit.downloadmanager.guard.SpaceGuardEvent;
+import com.avit.downloadmanager.task.exception.PauseExecute;
+import com.avit.downloadmanager.task.exception.TaskException;
 
 import java.io.File;
 import java.io.IOException;
@@ -61,6 +64,7 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
             /**
              * 是否需要断点续传, 且如果为了下载创建的临时文件存在，则 断点续传的数据才是真正有效的。
              */
+            long realLength = 0;
             File fileTemp = new File(fileFullPath + KEY_TMP);
             if (supportBreakpoint && fileTemp.exists() && fileTemp.isFile()) {
                 long writtenLength = 0;
@@ -68,6 +72,8 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
                 if (!list.isEmpty()) {
                     DLTempConfig temp = list.get(0);
                     writtenLength = temp.written;
+                    realLength = temp.contentLength;
+                    Log.d(TAG, "onStart: break point real length = " + realLength);
                 }
                 if (writtenLength > 0) {
                     Log.w(TAG, "onStart: resume break point written length = " + writtenLength);
@@ -83,22 +89,57 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
                 contentLength = downloadHelper.getContentLength();
             } else {
                 Log.e(TAG, "onStart: responseCode = " + responseCode);
+                taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), "http response code = " + responseCode));
                 return false;
             }
             fileLength = contentLength + breakPoint;
+
+            if (dlConfig == null) {
+                dlConfig = createDLTempConfig(breakPoint, fileLength - 1);
+                dlConfig.written = breakPoint;
+            }
+
+            /**
+             * 首次下载，文件总长度 未设置，此时 下载断点肯定不存在，因此 breakPoint == 0, real length 尚未设置
+             * fileLength == contentLength == 文件总长度
+             */
+            if (realLength == 0){
+                realLength = contentLength;
+            }
+            dlConfig.contentLength = realLength;
+            Log.d(TAG, "onStart: real length = " + realLength);
+
+            /**
+             * 文件总长度 与 range的 end 数值 无法做数学相等，证明 当前http资源请求 不支持 range
+             */
+            if (realLength != dlConfig.end + 1) {
+                Log.e(TAG, "onStart: DONOT support breakpoint");
+                /**
+                 * 清楚 基于断点续传的 状态值
+                 */
+                breakPoint = 0;
+                fileLength = 0;
+
+                fileTemp.delete();
+
+                DownloadHelper downloadHelper = this.downloadHelper.clone();
+                downloadHelper.withRange(0, -1);
+                this.downloadHelper.release();
+                this.downloadHelper = downloadHelper;
+                this.downloadHelper.created();
+
+                contentLength = this.downloadHelper.getContentLength();
+                fileLength = dlConfig.contentLength = realLength = contentLength;
+                dlConfig.clearBreakpoint();
+            }
 
             /**
              * 创建固定大小文件作为占位
              */
             accessFile = new RandomAccessFile(fileTemp, "rw");
-            accessFile.setLength(fileLength);
+            accessFile.setLength(realLength);
 
             Log.d(TAG, "onStart: remain fileLength = " + contentLength + ", file = " + downloadItem.getFilename());
-
-            if (dlConfig == null) {
-                dlConfig = createDLTempConfig(breakPoint, fileLength);
-                dlConfig.written = breakPoint;
-            }
 
             taskListener.onStart(downloadItem);
 
@@ -181,21 +222,16 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
         } catch (TaskException e) {
             taskListener.onStop(downloadItem, 0, e.getMessage());
         } catch (PauseExecute pauseExecute){
+            Log.w(TAG, "onDownload: " + pauseExecute.getMessage());
             taskListener.onPause(downloadItem, prePercent);
             throw pauseExecute;
         } finally {
             Log.d(TAG, "onDownload: always release");
             downloadHelper.release();
+            notifySpace();
         }
 
         return false;
-    }
-
-
-    @Override
-    public void start() {
-        notifyState();
-        super.start();
     }
 
     @Override
@@ -232,18 +268,15 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
             throw new PauseExecute("oops, task.key = " + getDownloadItem().getKey() + " is paused!");
         }
 
-        if (getState() == State.RELEASE) {
+        if (!isValidState()) {
             Log.w(TAG, "onProgress: state = " + getState().name());
-            throw new TaskException("task already release");
         }
     }
 
-    private void notifyState() {
-//        stateWait.notifyAll();
-    }
-
     private void notifySpace() {
-        spaceWait.notifyAll();
+        synchronized (spaceWait) {
+            spaceWait.notifyAll();
+        }
     }
 
     @Override

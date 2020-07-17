@@ -28,6 +28,12 @@ public interface ITask extends Callable<Boolean>, IGuardListener {
 
     State getState();
 
+    ITask fallback();
+
+    boolean hasParent();
+
+    ITask getParent();
+
     enum State {
         NONE, START, LOADING, PAUSE, ERROR, COMPLETE, RELEASE
     }

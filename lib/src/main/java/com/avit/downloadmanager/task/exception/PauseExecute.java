@@ -1,4 +1,4 @@
-package com.avit.downloadmanager.task;
+package com.avit.downloadmanager.task.exception;
 
 public class PauseExecute extends IllegalStateException {
     public PauseExecute() {

@@ -244,6 +244,23 @@ public final class DownloadHelper {
         return this;
     }
 
+    public final DownloadHelper clone(){
+
+        DownloadHelper downloadHelper = new DownloadHelper();
+        downloadHelper.dlPath = dlPath;
+        downloadHelper.start = start;
+        downloadHelper.end = end;
+        downloadHelper.range = range;
+
+        downloadHelper.onProgressListener = onProgressListener;
+
+        downloadHelper.tmpSuffix = tmpSuffix;
+
+        downloadHelper.isNeedRename = isNeedRename;
+
+        return downloadHelper;
+    }
+
     public interface OnProgressListener {
         void onProgress(String dlPath, String filePath, long length);
     }

@@ -8,10 +8,16 @@ import com.avit.downloadmanager.data.DLTempConfig;
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.download.DownloadHelper;
 import com.avit.downloadmanager.error.Error;
+import com.avit.downloadmanager.executor.AbsExecutor;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.guard.IGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.guard.SpaceGuardEvent;
+import com.avit.downloadmanager.guard.SystemGuard;
+import com.avit.downloadmanager.task.exception.PauseExecute;
+import com.avit.downloadmanager.task.exception.FallbackException;
+import com.avit.downloadmanager.task.exception.TaskException;
+import com.avit.downloadmanager.verify.VerifyConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,9 +26,11 @@ import java.net.HttpURLConnection;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadFactory;
 
 public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> implements RandomTask.LoadListener {
@@ -97,6 +105,7 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
                 fileLength = downloadHelper.getContentLength();
             } else {
                 Log.e(TAG, "onStart: responseCode = " + responseCode);
+                taskListener.onError(downloadItem, new Error(Error.Type.ERROR_NETWORK.value(), "http response code = " + responseCode));
                 return false;
             }
 
@@ -243,22 +252,23 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
         /**
          * block here
          */
-        for (int i = 0; i < futures.length && !hasError; ++i) {
-            try {
+        try {
+            for (int i = 0; i < futures.length && !hasError; ++i) {
                 futures[i].get();
-            } catch (TaskException e) {
-                Log.e(TAG, "onDownload: ", e);
-                hasError = true;
-                taskListener.onStop(downloadItem, 0, e.getMessage());
-                break;
-            } catch (PauseExecute pauseExecute){
-                taskListener.onPause(downloadItem, prePercent);
-                throw pauseExecute;
-            } catch (Throwable e) {
-                Log.e(TAG, "onDownload: ", e);
-                hasError = true;
-                taskListener.onError(downloadItem, new Error(Error.Type.ERROR_SYSTEM.value(), e.getMessage(), e));
             }
+        } catch (ExecutionException ex) {
+            if (!executionExceptionParse(ex)) {
+                Log.e(TAG, "onDownload: ", ex);
+                hasError = true;
+                taskListener.onError(downloadItem, new Error(Error.Type.ERROR_UNKNOWN.value(), ex.getMessage(), ex));
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "onDownload: ", e);
+            hasError = true;
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_SYSTEM.value(), e.getMessage(), e));
+        } finally {
+            Log.w(TAG, "onDownload: always release");
+            releaseTask();
         }
 
         if (hasError) {
@@ -287,6 +297,72 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
         }
 
         return true;
+    }
+
+    private boolean executionExceptionParse(ExecutionException ex) {
+        Throwable throwable = ex.getCause();
+        if (throwable == null)
+            return false;
+
+        if (throwable instanceof TaskException) {
+
+            Log.e(TAG, "executionExceptionParse: ", throwable);
+            hasError = true;
+            taskListener.onStop(downloadItem, 0, throwable.getMessage());
+            return true;
+
+        } else if (throwable instanceof PauseExecute) {
+
+            Log.w(TAG, "executionExceptionParse: " + throwable.getMessage());
+            taskListener.onPause(downloadItem, prePercent);
+            throw (PauseExecute) throwable;
+
+        } else if (throwable instanceof FallbackException) {
+
+            Log.w(TAG, "executionExceptionParse: " +  throwable.getMessage());
+            if (!hasParent()) {
+                ITask fallbackTask = fallback();
+                Log.w(TAG, "executionExceptionParse: will fall back to singleTask" + fallbackTask);
+                submit(fallbackTask);
+            }
+            throw (FallbackException) throwable;
+
+        } else if (throwable instanceof IOException) {
+            taskListener.onError(downloadItem, new Error(Error.Type.ERROR_FILE.value(), throwable.getMessage(), throwable));
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public ITask fallback() {
+
+        /**
+         * 不支持多线程下载，则删除之前存在的 临时文件 及 数据库表中用于 断点续传的数据
+         */
+        if (dlTempConfigs != null && dlTempConfigs.length >0){
+            Log.w(TAG, "fallback: delete multi config -> " + downloadItem.getDlPath() + " " + new File(dlTempConfigs[0].filePath + KEY_TMP).delete());
+            Log.w(TAG, "fallback: break point delete, " + breakPointHelper.deleteByKey(downloadItem.getKey() + KEY_SUFFIX));
+        }
+
+        AbstactTask<SingleRandomTask>  single = new SingleRandomTask(downloadItem)
+                .withGuard(systemGuards.toArray(new SystemGuard[0]))
+                .withListener(taskListener)
+                .withVerifyConfig(verifyConfigs.toArray(new VerifyConfig[0]));
+
+        single.setParent(getParent());
+        single.setExecutor(getAbsExecutor());
+
+        if (callbackOnMainThread){
+            single.callbackOnMainThread();
+        }
+
+        if (supportBreakpoint){
+            single.supportBreakpoint();
+        }
+
+        return single;
     }
 
     @Override
@@ -330,8 +406,8 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
             throw new PauseExecute("oops, task.key = " + getDownloadItem().getKey() + " is paused!");
         }
 
-        if (getState() == State.RELEASE) {
-            throw new TaskException("task already release");
+        if (!isValidState()) {
+            Log.w(TAG, "onProgress: state = " + getState().name());
         }
     }
 
@@ -352,23 +428,24 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
         taskListener.onError(downloadItem, error);
     }
 
-
-    @Override
-    public void start() {
-        notifyState();
-        super.start();
-    }
-
     @Override
     public void release() {
         super.release();
+        releaseTask();
         executorService.shutdownNow();
     }
 
-    private void notifyState() {
-//        stateWait.notifyAll();
-    }
+    private void releaseTask(){
+        if (this.futures == null || this.futures.length <= 0)
+            return ;
 
+        Future<DLTempConfig>[] fs = this.futures;
+        for (Future<DLTempConfig> f : fs){
+            if (f == null || f.isCancelled() || f.isDone())
+                continue;
+            f.cancel(true);
+        }
+    }
 }
 
 class RandomTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressListener {
@@ -406,7 +483,9 @@ class RandomTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
     }
 
     void notifySpace() {
-        waitSpace.notifyAll();
+        synchronized (waitSpace) {
+            waitSpace.notifyAll();
+        }
     }
 
     @Override
@@ -429,34 +508,34 @@ class RandomTask implements Callable<DLTempConfig>, DownloadHelper.OnProgressLis
         long range = dlConfig.end - start;
         Log.d(TAG, tn + " call: range = " + range);
 
-        /**
-         * 为什么要加 +1，可以查看 创建 config 的注释，range 的范围 是从 0 开始的，且头尾包含。
-         */
-        if (contentLength != range + 1) {
-            throw new IOException("do not support Rang");
-        }
+        try {
+            /**
+             * 为什么要加 +1，可以查看 创建 config 的注释，range 的范围 是从 0 开始的，且头尾包含。
+             */
+            if (contentLength != range + 1) {
+                throw new FallbackException("do not support http Rang.");
+            }
 
-        /**
-         * 如果空间不够，则 等待
-         */
-        while (!spaceGuard.occupySize(contentLength)) {
-            synchronized (waitSpace) {
-                try {
-                    waitSpace.wait();
-                } catch (Throwable e) {
-                    Log.e(TAG, tn + " call: ", e);
+            /**
+             * 如果空间不够，则 等待
+             */
+            while (!spaceGuard.occupySize(contentLength)) {
+                synchronized (waitSpace) {
+                    try {
+                        waitSpace.wait();
+                    } catch (Throwable e) {
+                        Log.e(TAG, tn + " call: ", e);
+                    }
                 }
             }
-        }
 
-        try {
             downloadHelper.withProgressListener(this).noRename().retrieveFileByRandom(dlConfig.filePath);
-        } catch (IOException e) {
-            Log.e(TAG, tn + " call: ", e);
-            loadListener.onError(dlConfig, new Error(Error.Type.ERROR_FILE.value(), e.getMessage(), e));
+        } catch (Throwable throwable) {
+            throw throwable;
         } finally {
             Log.d(TAG, tn + " call: always release");
             downloadHelper.release();
+            notifySpace();
         }
 
         return dlConfig;

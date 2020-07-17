@@ -16,6 +16,8 @@ import com.avit.downloadmanager.executor.AbsExecutor;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.guard.SystemGuard;
+import com.avit.downloadmanager.task.exception.PauseExecute;
+import com.avit.downloadmanager.task.exception.TaskException;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyCheck;
 import com.avit.downloadmanager.verify.VerifyConfig;
@@ -49,6 +51,8 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
     protected State state;
 
+    private ITask parent;
+
     public AbstactTask(DownloadItem downloadItem) {
         this.verifyConfigs = new ArrayList<>(1);
         this.systemGuards = new ArrayList<>(2);
@@ -61,6 +65,10 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         this.state = State.NONE;
     }
 
+    protected AbsExecutor getAbsExecutor() {
+        return absExecutor;
+    }
+
     @Override
     public void setExecutor(AbsExecutor executor) {
         this.absExecutor = executor;
@@ -68,6 +76,10 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
     public final void submitSelf(){
         this.absExecutor.submit(this);
+    }
+
+    public final void submit(ITask task){
+        this.absExecutor.submit(task);
     }
 
     public TASK withListener(TaskListener listener) {
@@ -116,6 +128,20 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         }
 
         return (TASK) this;
+    }
+
+    public void setParent(ITask parent) {
+        this.parent = parent;
+    }
+
+    @Override
+    public ITask getParent() {
+        return parent;
+    }
+
+    @Override
+    public boolean hasParent() {
+        return parent != null;
     }
 
     public TASK supportBreakpoint() {
@@ -175,6 +201,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         }
 
         if (isValidState() && !onStart()) {
+            release();
             return Boolean.FALSE;
         }
 
@@ -195,11 +222,12 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
         state = State.START;
 
-        if (isValidState() && !onDownload()) {
-            return Boolean.FALSE;
-        }
+        boolean isPause = false;
+        try {
+            if (isValidState() && !onDownload()) {
+                return Boolean.FALSE;
+            }
 
-//        try {
             if (isValidState() && !onVerify()) {
                 taskListener.onError(downloadItem, new Error(Error.Type.ERROR_DATA.value(), "check verify invalid"));
                 return Boolean.FALSE;
@@ -209,9 +237,18 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
             if (taskListener != null) {
                 taskListener.onCompleted(downloadItem);
             }
-//        } finally {
-            release();
-//        }
+        }
+        /**
+         * 如果 是 pause 任务，则 资源不释放 等待 下一次提交
+         */
+        catch (PauseExecute ex) {
+            isPause = true;
+            throw ex;
+        } finally {
+            if (!isPause) {
+                release();
+            }
+        }
 
         return Boolean.TRUE;
     }
@@ -229,7 +266,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
         String itemPath = downloadItem.getSavePath() + File.separator + downloadItem.getFilename();
         File file = new File(itemPath);
-        if (!file.exists()) {
+        if (!file.exists() || !file.isFile()) {
             Log.e(TAG, "onVerify: " + itemPath + " not exists.");
             return false;
         }
@@ -263,13 +300,13 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         if (!isValidState()) {
             return;
         }
-        State state = getState();
-        if (state == State.PAUSE) {
-            this.state = State.START;
-            return;
-        } else {
+//        State state = getState();
+//        if (state == State.PAUSE) {
+//            this.state = State.START;
+//            return;
+//        } else {
             Log.w(TAG, "start: state = " + state.name());
-        }
+//        }
     }
 
     @Override
@@ -309,6 +346,11 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         release();
     }
 
+    @Override
+    public ITask fallback() {
+        return this;
+    }
+
     private void releaseGuard() {
         for (SystemGuard guard : systemGuards) {
             guard.removeGuardListener(this);
@@ -318,13 +360,16 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
 
     @Override
     public void release() {
+
+        Log.w(TAG, "release: " + this);
+
         this.state = State.RELEASE;
         releaseGuard();
     }
 
-    private boolean isValidState() {
+    public final boolean isValidState() {
         if (state == State.RELEASE || state == State.ERROR)
-            throw new IllegalStateException("" + this + " already " + state.name());
+            throw new TaskException("" + this + " already " + state.name());
 
         return true;
     }
