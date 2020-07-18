@@ -27,7 +27,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.4'
 
     implementation 'org.litepal.android:core:2.0.0'
-    implementation project(path: ':lib')
+    implementation project(path: ':sdk-avit-download')
 
 
 }

@@ -1,3 +1,4 @@
 rootProject.name='DownloadManager'
 include ':app'
-include ':lib'
+include 'sdk-avit-download'
+project(':sdk-avit-download').projectDir = new File('lib')
