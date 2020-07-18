@@ -21,7 +21,9 @@ import com.avit.downloadmanager.guard.NetworkGuard;
 import com.avit.downloadmanager.guard.SpaceGuard;
 import com.avit.downloadmanager.task.ITask;
 import com.avit.downloadmanager.task.MultipleRandomTask;
+import com.avit.downloadmanager.task.SingleRandomTask;
 import com.avit.downloadmanager.task.TaskListener;
+import com.avit.downloadmanager.task.retry.RetryTask;
 import com.avit.downloadmanager.verify.IVerify;
 import com.avit.downloadmanager.verify.VerifyConfig;
 import com.avit.downloadmanager.watch.APKInstallWatch;
@@ -66,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
         /**
          * 单线程下载
          */
-        ITask randomTask = new MultipleRandomTask(downloadItem)
+        ITask randomTask = new SingleRandomTask(downloadItem)
                 /**
                  * 添加 网络 及 磁盘空间 管控
                  */
@@ -92,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
             Log.w(TAG, "submitDownloadTask: task.key = " + randomTask.getDownloadItem().getKey() +" already in downloading");
         }
 
-//        randomTask = new RetryTask(randomTask);
+        randomTask = new RetryTask(randomTask);
 
         DownloadManager.getInstance().submit(randomTask);
 
@@ -273,7 +275,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
      */
     @Override
     public void onPause(DownloadItem item, int percent) {
-        Log.d(TAG, "onPause: " + item.getFilename() + " -> " + percent);
+        Log.w(TAG, "onPause: " + item.getFilename() + " -> " + percent);
     }
 
     /**
@@ -284,7 +286,7 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
      */
     @Override
     public void onError(DownloadItem item, Error error) {
-        Log.d(TAG, "onError: " + item.getFilename() + " -> " + Error.dump(error));
+        Log.e(TAG, "onError: " + item.getFilename() + " -> " + Error.dump(error));
     }
 
     /**
@@ -296,7 +298,15 @@ public class MainActivity extends AppCompatActivity implements TaskListener {
      */
     @Override
     public void onStop(DownloadItem item, int reason, String message) {
-        Log.d(TAG, "onStop: " + item.getFilename() + " -> " + message);
+        Log.w(TAG, "onStop: " + item.getFilename() + " -> " + message);
+    }
+
+    @Override
+    public void onFallback(DownloadItem item, ITask old, ITask fallback) {
+        Log.w(TAG, "onFallback: old = " + old +", fallback = " + fallback);
+        if (old == currentTask){
+            currentTask = fallback;
+        }
     }
 }
 
