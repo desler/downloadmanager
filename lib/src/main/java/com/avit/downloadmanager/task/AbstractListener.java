@@ -38,4 +38,9 @@ public class AbstractListener implements TaskListener {
     public void onStop(DownloadItem item, int reason, String messsage) {
         Log.w(TAG, "onStop: item = " + item + ", reason = " + reason + ", message = " + messsage);
     }
+
+    @Override
+    public void onFallback(DownloadItem item, ITask old, ITask fallback) {
+        Log.w(TAG, "onFallback: item = " + item + ", old = " + old + ", fallback = " + fallback);
+    }
 }

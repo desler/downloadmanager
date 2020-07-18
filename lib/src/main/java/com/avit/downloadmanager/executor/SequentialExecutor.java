@@ -64,4 +64,9 @@ public final class SequentialExecutor extends AbsExecutor {
         return this;
     }
 
+    @Override
+    public void release() {
+        super.release();
+        seqExecutor.shutdownNow();
+    }
 }

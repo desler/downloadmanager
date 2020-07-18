@@ -322,7 +322,7 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
             Log.w(TAG, "executionExceptionParse: " +  throwable.getMessage());
             if (!hasParent()) {
                 ITask fallbackTask = fallback();
-                Log.w(TAG, "executionExceptionParse: will fall back to singleTask" + fallbackTask);
+                Log.w(TAG, "executionExceptionParse: will fall back to singleTask " + fallbackTask);
                 submit(fallbackTask);
             }
             throw (FallbackException) throwable;
@@ -337,7 +337,6 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
 
     @Override
     public ITask fallback() {
-
         /**
          * 不支持多线程下载，则删除之前存在的 临时文件 及 数据库表中用于 断点续传的数据
          */
@@ -348,19 +347,16 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
 
         AbstactTask<SingleRandomTask>  single = new SingleRandomTask(downloadItem)
                 .withGuard(systemGuards.toArray(new SystemGuard[0]))
-                .withListener(taskListener)
+                .withListener(getTaskListener())
                 .withVerifyConfig(verifyConfigs.toArray(new VerifyConfig[0]));
 
         single.setParent(getParent());
         single.setExecutor(getAbsExecutor());
 
-        if (callbackOnMainThread){
-            single.callbackOnMainThread();
-        }
+        single.callbackOnMainThread = callbackOnMainThread;
+        single.supportBreakpoint = supportBreakpoint;
 
-        if (supportBreakpoint){
-            single.supportBreakpoint();
-        }
+        taskListener.onFallback(downloadItem, this, single);
 
         return single;
     }
@@ -445,6 +441,23 @@ public final class MultipleRandomTask extends AbstactTask<MultipleRandomTask> im
                 continue;
             f.cancel(true);
         }
+    }
+
+    @Override
+    public MultipleRandomTask clone() {
+        MultipleRandomTask randomTask = new MultipleRandomTask(downloadItem)
+                .withGuard(systemGuards.toArray(new SystemGuard[0]))
+                .withListener(getTaskListener())
+                .withVerifyConfig(verifyConfigs.toArray(new VerifyConfig[0]));
+
+        randomTask.supportBreakpoint = supportBreakpoint;
+        randomTask.callbackOnMainThread = callbackOnMainThread;
+        randomTask.maxThreads = maxThreads;
+
+        randomTask.setExecutor(getAbsExecutor());
+        randomTask.setParent(getParent());
+
+        return randomTask;
     }
 }
 

@@ -8,6 +8,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.util.Pair;
 
 import com.avit.downloadmanager.data.BreakPointHelper;
 import com.avit.downloadmanager.data.DownloadItem;
@@ -147,6 +148,10 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
     public TASK supportBreakpoint() {
         supportBreakpoint = true;
         return (TASK) this;
+    }
+
+    public List<SystemGuard> getSystemGuards() {
+        return systemGuards;
     }
 
     /**
@@ -374,6 +379,11 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         return true;
     }
 
+    @Override
+    public ITask clone() {
+        return null;
+    }
+
     private static class EventDispatcher extends Handler implements TaskListener {
 
         private final static String TAG = "EventDispatcher";
@@ -385,6 +395,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         public final static int MSG_TASK_COMPLETE = 1003;
         public final static int MSG_TASK_PAUSE = 1004;
         public final static int MSG_TASK_STOP = 1005;
+        public final static int MSG_TASK_FALLBACK = 1006;
         public final static int MSG_TASK_ERROR = 1111;
 
         private TaskListener taskListener;
@@ -419,10 +430,16 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
                     taskListener.onCompleted((DownloadItem) msg.obj);
                     break;
                 case MSG_TASK_STOP:
-                    taskListener.onStop((DownloadItem) msg.obj, msg.arg1, msg.getData().getString("message"));
+                    Pair<String, DownloadItem> stop = (Pair<String, DownloadItem>) msg.obj;
+                    taskListener.onStop(stop.second, msg.arg1, stop.first);
+                    break;
+                case MSG_TASK_FALLBACK:
+                    Pair<Pair<ITask, ITask>, DownloadItem> fallback = (Pair<Pair<ITask, ITask>, DownloadItem>) msg.obj;
+                    taskListener.onFallback(fallback.second, fallback.first.first, fallback.first.second);
                     break;
                 case MSG_TASK_ERROR:
-                    taskListener.onError((DownloadItem) msg.obj, (Error) msg.getData().getSerializable("error"));
+                    Pair<Error, DownloadItem> error = (Pair<Error, DownloadItem>) msg.obj;
+                    taskListener.onError(error.second, error.first);
                     break;
             }
         }
@@ -460,7 +477,7 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         @Override
         public void onError(DownloadItem item, Error error) {
             Message msg = obtainMessage(MSG_TASK_ERROR);
-            msg.obj = item;
+            msg.obj = Pair.create(error, item);
 
             Bundle bundle = new Bundle();
             bundle.putSerializable("error", error);
@@ -472,13 +489,15 @@ public abstract class AbstactTask<TASK extends AbstactTask> implements ITask {
         @Override
         public void onStop(DownloadItem item, int reason, String message) {
             Message msg = obtainMessage(MSG_TASK_STOP);
-            msg.obj = item;
+            msg.obj = Pair.create(message, item);
             msg.arg1 = reason;
+            msg.sendToTarget();
+        }
 
-            Bundle bundle = new Bundle();
-            bundle.putString("message", message);
-            msg.setData(bundle);
-
+        @Override
+        public void onFallback(DownloadItem item, ITask old, ITask fallback) {
+            Message msg = obtainMessage(MSG_TASK_FALLBACK);
+            msg.obj = Pair.create(Pair.create(old, fallback), item);
             msg.sendToTarget();
         }
     }

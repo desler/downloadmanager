@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
 public abstract class AbsExecutor implements Callable<Boolean> {
@@ -86,12 +87,16 @@ public abstract class AbsExecutor implements Callable<Boolean> {
 
         while (enumeration.hasMoreElements()){
             String key = enumeration.nextElement();
-            FutureTask<Boolean> task = futureTasks.get(key).second;
+            ITask task = futureTasks.get(key).first;
 
-            if (task == null || task.isDone() || task.isCancelled())
-                continue;
+            if (task != null) {
+                task.release();
+            }
 
-            task.cancel(true);
+            Future<Boolean> future = futureTasks.get(key).second;
+            if (future != null){
+                future.cancel(true);
+            }
         }
 
         futureTasks.clear();

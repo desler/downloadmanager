@@ -10,8 +10,10 @@ import com.avit.downloadmanager.error.Error;
 import com.avit.downloadmanager.guard.GuardEvent;
 import com.avit.downloadmanager.guard.IGuard;
 import com.avit.downloadmanager.guard.SpaceGuardEvent;
+import com.avit.downloadmanager.guard.SystemGuard;
 import com.avit.downloadmanager.task.exception.PauseExecute;
 import com.avit.downloadmanager.task.exception.TaskException;
+import com.avit.downloadmanager.verify.VerifyConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -291,4 +293,19 @@ public class SingleRandomTask extends AbstactTask<SingleRandomTask> implements D
         return true;
     }
 
+    @Override
+    public SingleRandomTask clone() {
+        SingleRandomTask randomTask = new SingleRandomTask(downloadItem)
+                .withGuard(systemGuards.toArray(new SystemGuard[0]))
+                .withListener(getTaskListener())
+                .withVerifyConfig(verifyConfigs.toArray(new VerifyConfig[0]));
+
+        randomTask.supportBreakpoint = supportBreakpoint;
+        randomTask.callbackOnMainThread = callbackOnMainThread;
+
+        randomTask.setExecutor(getAbsExecutor());
+        randomTask.setParent(getParent());
+
+        return randomTask;
+    }
 }

@@ -3,6 +3,7 @@ package com.avit.downloadmanager.task;
 import com.avit.downloadmanager.data.DownloadItem;
 import com.avit.downloadmanager.executor.AbsExecutor;
 import com.avit.downloadmanager.guard.IGuardListener;
+import com.avit.downloadmanager.guard.SystemGuard;
 import com.avit.downloadmanager.verify.VerifyConfig;
 
 import java.util.List;
@@ -15,6 +16,8 @@ public interface ITask extends Callable<Boolean>, IGuardListener {
     TaskListener getTaskListener();
 
     List<VerifyConfig> getVerifyConfigs();
+
+    List<SystemGuard> getSystemGuards();
 
     void release();
 
@@ -33,6 +36,8 @@ public interface ITask extends Callable<Boolean>, IGuardListener {
     boolean hasParent();
 
     ITask getParent();
+
+    ITask clone();
 
     enum State {
         NONE, START, LOADING, PAUSE, ERROR, COMPLETE, RELEASE

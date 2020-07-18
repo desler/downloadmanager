@@ -15,4 +15,6 @@ public interface TaskListener {
     void onError(DownloadItem item, Error error);
 
     void onStop(DownloadItem item, int reason, String message);
+
+    void onFallback(DownloadItem item, ITask old, ITask fallback);
 }

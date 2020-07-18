@@ -214,7 +214,8 @@ public final class DownloadHelper {
                 this.inputStream.close();
                 this.inputStream = null;
             }
-        } catch (IOException e) {
+        } catch (Throwable e) {
+            Log.w(TAG, "release: ", e);
         }
 
         try {
@@ -222,7 +223,8 @@ public final class DownloadHelper {
                 this.outputStream.close();
                 outputStream = null;
             }
-        } catch (IOException e) {
+        } catch (Throwable e) {
+            Log.w(TAG, "release: ", e);
         }
 
         try {
@@ -230,7 +232,8 @@ public final class DownloadHelper {
                 accessFile.close();
                 accessFile = null;
             }
-        } catch (IOException e) {
+        } catch (Throwable e) {
+            Log.w(TAG, "release: ", e);
         }
 
         if (this.httpURLConnection != null) {
