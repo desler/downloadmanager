@@ -1,0 +1,157 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion rootProject.ext.androids.compileSdkVersion
+    buildToolsVersion rootProject.ext.androids.buildToolsVersion
+    flavorDimensions "versionCode"
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.androids.minSdkVersion
+        targetSdkVersion rootProject.ext.androids.targetSdkVersion
+        versionCode rootProject.ext.androids.versionCode
+        versionName rootProject.ext.androids.versionName
+//        multiDexEnabled true
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+
+        avit_wh {
+            keyAlias 'avit-wh'
+            keyPassword 'avitavit'
+            storeFile file("${rootProject.ext.defaultKeyStoreDir}" + '/avit-wh.keystore')
+            storePassword 'avitavit'
+
+        }
+
+        buildTypes {
+
+            debug {
+                signingConfig signingConfigs.avit_wh
+            }
+
+            release {
+                minifyEnabled false
+                proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                signingConfig signingConfigs.avit_wh
+            }
+        }
+
+
+        compileOptions {
+            sourceCompatibility JavaVersion.VERSION_1_8
+            targetCompatibility JavaVersion.VERSION_1_8
+        }
+
+        lintOptions {
+            checkReleaseBuilds false
+            abortOnError false
+        }
+
+        defaultConfig {
+//        ndk {
+//            // 设置支持的SO库架构
+//            abiFilters 'armeabi' //, 'x86', 'armeabi-v7a', 'x86_64', 'arm64-v8a'
+//        }
+        }
+
+        repositories {
+            flatDir {
+                dirs 'libs'
+            }
+        }
+
+        packagingOptions {
+            exclude 'android/os/Messenger.aidl'
+            exclude 'android/os/Message.aidl'
+        }
+
+    }
+
+}
+
+android.applicationVariants.all { variant ->
+
+
+    variant.outputs.all { output ->
+        if (variant.buildType.name == 'release') {
+            outputFileName = getPrefixOutName(variant) + "_${variant.buildType.name}_${variant.versionName}.apk"
+            if (outputFileName != null && outputFileName.endsWith('.apk')) {
+                variant.getPackageApplicationProvider().get().outputDirectory = new File("$rootProject.projectDir/out/${project.name}/")
+                variant.getPackageApplicationProvider().get().outputScope.apkDatas.forEach {
+                    apkData -> apkData.outputFileName = outputFileName
+                }
+            }
+        }
+    }
+
+    variant.getAssembleProvider().get().doLast {
+
+        variant.outputs.each { output ->
+            def outputFile = output.outputFile;
+
+            def signedFileFullPath = outputFile.getPath()
+
+            if (outputFile != null && outputFile.name.endsWith('.apk') && variant.buildType.name == 'release') {
+                packageAppRelease(new File(signedFileFullPath), variant)
+            }
+        }
+    }
+
+
+}
+
+def packageAppRelease(outputFile, variant) {
+
+    def releaseDir = "$rootProject.projectDir/out/release/app/$getDateYYMMDD"
+    def newName = getPrefixOutName(variant) + '.apk'
+
+    copyFile("$outputFile", releaseDir
+            , "$outputFile.name", newName)
+
+    def releaseModuleFileFullPath = outputFile.getParent() + File.separator + getPrefixOutName(variant) + '.txt';
+    def releasePackFileFullPath = releaseDir + File.separator + getPrefixOutName(variant) + '.txt';
+
+    writeFile(releaseModuleFileFullPath, getReadMeContext(variant, outputFile, true), true)
+    writeFile(releasePackFileFullPath, getReadMeContext(variant, outputFile, false), false)
+
+    return newName;
+}
+
+private String getReadMeContext(variant, outputFile, fullName) {
+    StringBuilder stringBuild = new StringBuilder()
+    stringBuild.
+            append("****************************************************").append('\n')
+            .append("****************Copyright © AVIT LTD.***************").append('\n')
+            .append("****************************************************").append('\n')
+            .append("<<<-----版本信息---->>>").append('\n')
+            .append("模块名称:" + getPrefixOutName(variant)).append('\n')
+            .append("文件名称:").append(fullName ? outputFile.name : (getPrefixOutName(variant) + ".apk")).append('\n')
+            .append("应用包名:" + variant.applicationId).append('\n')
+            .append("版本号:" + variant.versionCode).append('\n')
+            .append("版本名称:" + variant.versionName).append('\n')
+            .append("最后更新:" + formatDateYYMMDDHMS(outputFile.lastModified())).append('\n')
+            .append("大小:" + outputFile.length()).append('\n')
+            .append("Md5:" + getFileMd5(outputFile)).append('\n')
+            .append("Sha1:" + getFileSha1(outputFile)).append('\n')
+            .append("<<<-----版本特性---->>>").append('\n')
+            .append("修正问题:").append('\n').append("//todo").append('\n')
+            .append("优化功能:").append('\n').append("//todo").append('\n')
+            .append("新增功能:").append('\n').append("//todo").append('\n')
+            .append("****************************************************")
+            .append('\n')
+    if (fullName) {
+        println stringBuild.toString()
+    }
+    stringBuild.toString()
+}
+
+def getPrefixOutName(variant) {
+    "${variant.flavorName}" == "" ?
+            "avit_${project.name}" :
+            "avit_${project.name}_${variant.flavorName}"
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}

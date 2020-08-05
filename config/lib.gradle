@@ -1,0 +1,59 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion rootProject.ext.androids.compileSdkVersion
+    buildToolsVersion rootProject.ext.androids.buildToolsVersion
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.androids.minSdkVersion
+        targetSdkVersion rootProject.ext.androids.targetSdkVersion
+        versionCode rootProject.ext.androids.versionCode
+        versionName rootProject.ext.androids.versionName
+        multiDexEnabled true
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+
+}
+
+
+android.libraryVariants.all { variant ->
+    variant.getAssembleProvider().get().doLast {
+        variant.outputs.each { output ->
+            def outputFile = output.outputFile;
+
+            if (outputFile != null && outputFile.name.endsWith('.aar') && variant.buildType.name == 'release') {
+                copyFileToApk(outputFile,variant)
+            }
+        }
+    }
+}
+
+def copyFileToApk(outputFile, variant) {
+
+    def newName = project.name  + '.aar';
+    def releaseDir = "$rootProject.projectDir/out/release/aar/$getDateYYMMDD"
+
+    copyFile("$outputFile", releaseDir
+            , "$outputFile.name", "$newName")
+
+    return newName;
+}
+
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}

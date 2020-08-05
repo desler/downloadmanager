@@ -1,0 +1,72 @@
+apply plugin: 'maven'
+
+afterEvaluate { project ->
+    uploadMaven
+}
+
+task uploadMaven(group: "upload") {
+    upload("uploadMavenNexus");
+    upload("uploadMavenArtifactory");
+    upload("uploadMavenCoding");
+    dependsOn(uploadMavenNexus, uploadMavenArtifactory, uploadMavenCoding)
+}
+
+void upload(String name) {
+    String path = rootProject.ext.mavenUploadDir + "/" + name + ".properties"
+
+    task "$name"(type: UploadTask, group: "upload") {
+        if (path != null) {
+            propertiesPath = path;
+        }
+        versionName = VERSION_NAME;
+        group = GROUP;
+        id = POM_ARTIFACT_ID;
+
+        parsePropertiesConfig()
+
+        configuration = configurations.archives
+        repositories {
+            repositories.mavenDeployer {
+                repository(url: url) {
+                    authentication(
+                            userName: userName,
+                            password: passWord
+                    )
+                }
+                pom.groupId = group
+                pom.artifactId = id
+                pom.version = versionName
+            }
+        }
+    }
+}
+
+class UploadTask extends Upload {
+
+    String propertiesPath
+    def config
+    String url
+    String userName;
+    String passWord
+    String group
+    String id
+    String versionName
+
+    @TaskAction
+    def parsePropertiesConfig() {
+
+        println "---------------------->>>>>>>>>>>UploadTask<<<<<<<<<<<<----------------------"
+        println "UploadTask---> propertiesPath: $propertiesPath"
+        config = new ConfigSlurper().parse(new File(propertiesPath).toURL())
+        url = versionName.endsWith("-SNAPSHOT") ? config.snapshotRepositoryUrl
+                : config.releaseRepositoryUrl
+        userName = config.userName
+        passWord = config.passWord
+        println "UploadTask---> url: $url"
+        println "UploadTask---> userName: $userName"
+        println "UploadTask---> password: $passWord"
+        println "UploadTask---> archives: $group:$id:$versionName"
+    }
+}
+
+
